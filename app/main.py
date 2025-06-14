@@ -1,7 +1,11 @@
+"""
+Updated main application file with refactored imports.
+"""
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import settings
+from core.config import settings
 from reddit.api.endpoints import router as reddit_router
 
 app = FastAPI(

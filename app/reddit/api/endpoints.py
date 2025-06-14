@@ -1,5 +1,5 @@
 """
-Reddit Marketing API Endpoints
+Updated Reddit API endpoints with refactored services.
 """
 
 from fastapi import APIRouter, HTTPException, Depends
