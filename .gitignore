@@ -1,0 +1,9 @@
+env
+experiments
+*.json
+*.ipynb
+*/.env
+app/data
+*/*/__pycache__
+*/*/*/__pycache__/*
+*/*/*/*/__pycache__/*
