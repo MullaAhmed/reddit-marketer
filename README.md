@@ -13,25 +13,54 @@ A comprehensive Reddit marketing automation system that helps organizations enga
 
 ## 🏗️ Architecture
 
-### Refactored Structure
+### Clean, Modular Structure
 ```
 app/
-├── shared/                    # Shared utilities and common functionality
-│   ├── base/                 # Base classes and mixins
-│   ├── clients/              # Shared client interfaces
-│   ├── llm/                  # Shared LLM functionality
-│   └── utils/                # Utility functions
-├── core/                     # Core application functionality
-├── rag/                     # RAG system with unified services
-├── reddit/                  # Reddit marketing functionality
-└── services/                # Application services
+├── main.py                           # Single application entry point
+├── core/                            # Core application functionality
+│   ├── config.py                    # Centralized configuration
+│   ├── dependencies.py              # FastAPI dependencies
+│   └── middleware.py                # Application middleware
+├── api/                             # Unified API layer
+│   ├── router.py                    # Main API router
+│   └── endpoints/                   # All API endpoints
+│       ├── campaigns.py             # Campaign management endpoints
+│       ├── documents.py             # Document management endpoints
+│       ├── subreddits.py           # Subreddit discovery endpoints
+│       └── health.py               # Health check endpoints
+├── services/                        # Business logic layer
+│   ├── campaign_service.py          # Campaign orchestration
+│   ├── document_service.py          # Document processing (RAG)
+│   ├── reddit_service.py            # Reddit operations
+│   ├── llm_service.py              # LLM interactions
+│   └── web_scraper.py              # Web scraping
+├── models/                          # Data models
+│   ├── campaign.py                  # Campaign-related models
+│   ├── document.py                  # Document-related models
+│   ├── reddit.py                    # Reddit-related models
+│   └── common.py                    # Shared models
+├── clients/                         # External service clients
+│   ├── reddit_client.py             # Reddit API client
+│   ├── llm_client.py               # LLM provider clients
+│   └── storage_client.py           # Storage clients (ChromaDB, etc.)
+├── utils/                           # Utility functions
+│   ├── text_processing.py          # Text utilities
+│   ├── file_utils.py               # File operations
+│   └── validation.py               # Data validation
+└── storage/                         # Data persistence layer
+    ├── json_storage.py              # JSON file operations
+    ├── vector_storage.py            # Vector database operations
+    └── managers/                    # Storage managers
+        ├── document_manager.py      # Document storage
+        ├── campaign_manager.py      # Campaign storage
+        └── embeddings_manager.py    # Embeddings management
 ```
 
-### Key Improvements
-- **30% code reduction** through elimination of redundancy
-- **Unified services** for document processing and Reddit operations
-- **Centralized configuration** and shared utilities
-- **Consistent base classes** for all services
+### Key Design Principles
+- **Separation of Concerns**: Clear boundaries between API, business logic, and data layers
+- **Unified Services**: Centralized document processing and Reddit operations
+- **Modular Architecture**: Easy to extend and maintain
+- **Clean Dependencies**: Minimal coupling between components
 
 ## 📋 Workflow
 
@@ -80,18 +109,30 @@ execution_request = ResponseExecutionRequest(
 ## 🔧 API Endpoints
 
 ### Campaign Management
-- `POST /api/v1/reddit/campaigns/` - Create campaign
-- `GET /api/v1/reddit/campaigns/{id}` - Get campaign
-- `GET /api/v1/reddit/campaigns/` - List campaigns
+- `POST /api/v1/campaigns/` - Create campaign
+- `GET /api/v1/campaigns/{id}` - Get campaign
+- `GET /api/v1/campaigns/` - List campaigns
 
 ### Workflow Steps
-- `POST /api/v1/reddit/campaigns/{id}/discover-subreddits` - Find subreddits
-- `POST /api/v1/reddit/campaigns/{id}/discover-posts` - Find posts
-- `POST /api/v1/reddit/campaigns/{id}/generate-responses` - Generate responses
-- `POST /api/v1/reddit/campaigns/{id}/execute-responses` - Post responses
+- `POST /api/v1/campaigns/{id}/discover-subreddits` - Find subreddits
+- `POST /api/v1/campaigns/{id}/discover-posts` - Find posts
+- `POST /api/v1/campaigns/{id}/generate-responses` - Generate responses
+- `POST /api/v1/campaigns/{id}/execute-responses` - Post responses
 
-### Monitoring
-- `GET /api/v1/reddit/campaigns/{id}/status` - Get campaign status
+### Document Management
+- `POST /api/v1/documents/ingest` - Ingest documents
+- `POST /api/v1/documents/query` - Query documents
+- `GET /api/v1/documents/organizations/{id}` - Get organization documents
+
+### Subreddit Discovery
+- `POST /api/v1/subreddits/discover` - Discover subreddits
+- `POST /api/v1/subreddits/extract-topics` - Extract topics
+
+### Health & Monitoring
+- `GET /api/v1/health/` - Basic health check
+- `GET /api/v1/health/detailed` - Detailed health check
+- `GET /api/v1/health/ready` - Readiness check
+- `GET /api/v1/health/live` - Liveness check
 
 ## 🛠️ Installation
 
@@ -111,14 +152,17 @@ execution_request = ResponseExecutionRequest(
    ```env
    OPENAI_API_KEY=your_openai_key
    GOOGLE_API_KEY=your_google_key
-   REDDIT_CLIENT_ID=your_reddit_client_id
-   REDDIT_CLIENT_SECRET=your_reddit_client_secret
+   GROQ_API_KEY=your_groq_key
+   FIRECRAWL_API_KEY=your_firecrawl_key
+   LANGCHAIN_PROJECT=your_langchain_project
    ```
 4. Run the application:
    ```bash
    cd app
    python main.py
    ```
+
+The API will be available at `http://localhost:8000` with interactive documentation at `http://localhost:8000/docs`.
 
 ## 🔒 Safety Features
 
@@ -141,6 +185,24 @@ Campaigns progress through these states:
 
 ## 🛠️ Configuration
 
+### Environment Variables
+```env
+# Required API Keys
+OPENAI_API_KEY=your_openai_key
+GOOGLE_API_KEY=your_google_key
+
+# Optional API Keys
+GROQ_API_KEY=your_groq_key
+FIRECRAWL_API_KEY=your_firecrawl_key
+LANGCHAIN_PROJECT=your_langchain_project
+
+# Application Settings
+DATA_DIR=data
+MODEL_NAME=gpt-4o
+EMBEDDING_PROVIDER=openai
+DOCUMENT_STORE_TYPE=chroma
+```
+
 ### Reddit API Credentials
 ```python
 reddit_credentials = {
@@ -162,8 +224,8 @@ reddit_credentials = {
 
 ### Programmatic Usage
 ```python
-from reddit.services.campaign_service import CampaignService
-from reddit.models import CampaignCreateRequest, ResponseTone
+from services.campaign_service import CampaignService
+from models.campaign import CampaignCreateRequest, ResponseTone
 
 # Initialize service
 campaign_service = CampaignService()
@@ -185,13 +247,54 @@ import requests
 
 # Create campaign via API
 response = requests.post(
-    "http://localhost:8000/api/v1/reddit/campaigns/?organization_id=org-1",
+    "http://localhost:8000/api/v1/campaigns/?organization_id=org-1",
     json={
         "name": "My Campaign",
         "response_tone": "helpful"
     }
 )
+
+# Get campaign status
+status_response = requests.get(
+    f"http://localhost:8000/api/v1/campaigns/{campaign_id}/status"
+)
 ```
+
+### Document Ingestion
+```python
+# Ingest documents
+documents = [
+    {
+        "title": "Python Tutorial",
+        "content": "Learn Python programming...",
+        "metadata": {"category": "tutorial"}
+    }
+]
+
+response = requests.post(
+    "http://localhost:8000/api/v1/documents/ingest?organization_id=org-1",
+    json=documents
+)
+```
+
+## 🧠 AI & LLM Integration
+
+### Supported Providers
+- **OpenAI**: GPT-4, GPT-3.5-turbo
+- **Google**: Gemini 2.0 Flash
+- **Groq**: Llama 3.3 70B Versatile
+
+### LLM Service Features
+- **Multi-provider support**: Switch between different LLM providers
+- **Structured outputs**: JSON response formatting
+- **Temperature control**: Adjustable creativity levels
+- **Token management**: Usage tracking and optimization
+
+### Vector Storage
+- **ChromaDB**: Default vector database for document embeddings
+- **OpenAI Embeddings**: High-quality text embeddings
+- **Semantic Search**: Find relevant content based on meaning
+- **Chunk Management**: Intelligent text chunking and overlap
 
 ## ⚠️ Important Notes
 
@@ -208,12 +311,41 @@ The system tracks:
 - Community engagement metrics
 - Campaign progression
 - Error logs and debugging info
+- LLM usage and costs
+- Vector storage statistics
 
 ## 📚 Documentation
 
 - **API Documentation**: Available at `/docs` when running the server
-- **Architecture Guide**: See `app/README.md` for detailed architecture information
-- **Configuration Reference**: See `app/core/config.py` for all configuration options
+- **OpenAPI Spec**: Available at `/openapi.json`
+- **Health Checks**: Multiple endpoints for monitoring system health
+
+## 🧪 Testing
+
+### Health Checks
+```bash
+# Basic health check
+curl http://localhost:8000/api/v1/health/
+
+# Detailed health check
+curl http://localhost:8000/api/v1/health/detailed
+
+# Readiness check
+curl http://localhost:8000/api/v1/health/ready
+```
+
+### API Testing
+```bash
+# Test document ingestion
+curl -X POST "http://localhost:8000/api/v1/documents/ingest?organization_id=test-org" \
+  -H "Content-Type: application/json" \
+  -d '[{"title": "Test Doc", "content": "Test content"}]'
+
+# Test campaign creation
+curl -X POST "http://localhost:8000/api/v1/campaigns/?organization_id=test-org" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Test Campaign", "response_tone": "helpful"}'
+```
 
 ## 🤝 Contributing
 
@@ -223,6 +355,19 @@ The system tracks:
 4. Add tests for new functionality
 5. Submit a pull request
 
+### Development Setup
+```bash
+# Install development dependencies
+pip install -r requirements.txt
+
+# Run the application in development mode
+cd app
+python main.py
+
+# Access API documentation
+open http://localhost:8000/docs
+```
+
 ## 📄 License
 
 MIT License - see LICENSE file for details
@@ -230,13 +375,14 @@ MIT License - see LICENSE file for details
 ## 🆘 Support
 
 For issues and questions:
-1. Check the documentation in `app/README.md`
-2. Review the API documentation at `/docs`
-3. Create an issue on GitHub with detailed information
+1. Check the API documentation at `/docs`
+2. Review the health check endpoints
+3. Check application logs for detailed error information
+4. Create an issue on GitHub with detailed information
 
 ## 🔄 Version History
 
-- **v2.0.0**: Refactored architecture with 30% code reduction
+- **v2.0.0**: Clean architecture with modular design
 - **v1.0.0**: Initial release with basic campaign functionality
 
 ---
