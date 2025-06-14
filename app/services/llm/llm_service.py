@@ -2,7 +2,7 @@ import json
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel
 
-from config import (
+from core.config import (
     settings,
     OpenAIConfig,
     GoogleConfig,

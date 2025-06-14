@@ -7,7 +7,7 @@ from langsmith import traceable
 from pydantic import BaseModel
 from google.genai import types
 
-from config import (
+from core.config import (
     settings,
     OpenAIConfig,
     GoogleConfig,
@@ -296,5 +296,3 @@ class GeminiProvider:
             )
 
         return await inner_gemini_call(messages)
-
-
