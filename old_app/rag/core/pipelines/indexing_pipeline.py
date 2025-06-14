@@ -298,3 +298,5 @@ class IndexingPipeline:
                 
         except Exception as e:
             return False, f"Error processing text: {str(e)}", 0
+   
+    

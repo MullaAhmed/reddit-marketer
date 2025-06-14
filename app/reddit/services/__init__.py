@@ -1,1 +1,1 @@
-# Reddit services package
+# Reddit services

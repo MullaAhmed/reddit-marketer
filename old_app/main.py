@@ -1,5 +1,5 @@
 """
-Main FastAPI application with refactored imports.
+Updated main application file with refactored imports.
 """
 
 from fastapi import FastAPI

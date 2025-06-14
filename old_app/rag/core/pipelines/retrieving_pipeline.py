@@ -190,3 +190,4 @@ class RetrievalPipeline:
                 results[method] = {"error": str(e)}
         
         return results
+   

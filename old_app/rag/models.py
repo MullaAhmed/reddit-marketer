@@ -13,8 +13,8 @@ class Organization(BaseModel):
     description: Optional[str] = Field(None, max_length=500)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_active: bool = Field(default=True)
-    documents: List[Document] = Field(default_factory=list)
-    documents_count: int = Field(default=0, description="Number of documents in this organization")
+    documents: List[Document] = Field(default_factory=list)  # Fixed: added default_factory
+    documents_count: int = Field(default=0, description="Number of documents in this organization")  # Fixed: completed field
     
     class Config:
         json_encoders = {
@@ -55,7 +55,9 @@ class DocumentQuery(BaseModel):
     
     # Filtering options
     filters: Dict[str, Any] = Field(default_factory=dict, description="Metadata filters to apply")
-
+    
+    # Date range filtering
+   
 
 class DocumentResponse(BaseModel):
     """Model for document retrieval responses."""
@@ -82,7 +84,7 @@ class QueryResponse(BaseModel):
     documents: List[DocumentResponse]
     processing_time_ms: float
     
-
+    
 class CreateDocumentRequest(BaseModel):
     """Request model for creating new documents."""
     

@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 from firecrawl import FirecrawlApp
-from core.config import settings
+from config import settings
 
 class WebScraper:
 
@@ -69,3 +69,4 @@ class WebScraper:
             
         except Exception as e:
             raise Exception(f"Error fetching content from {url}: {str(e)}")
+    
