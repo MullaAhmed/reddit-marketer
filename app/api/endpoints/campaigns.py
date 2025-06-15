@@ -5,8 +5,8 @@ Campaign management API endpoints.
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Dict, Any
 
-from core.dependencies import CampaignServiceDep, validate_organization_id
-from models.campaign import (
+from app.core.dependencies import CampaignServiceDep, validate_organization_id
+from app.models.campaign import (
     Campaign, CampaignCreateRequest, CampaignResponse,
     SubredditDiscoveryRequest, PostDiscoveryRequest,
     ResponseGenerationRequest, ResponseExecutionRequest

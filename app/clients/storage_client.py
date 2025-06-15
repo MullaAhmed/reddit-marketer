@@ -14,7 +14,7 @@ from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack_integrations.components.retrievers.chroma import ChromaEmbeddingRetriever
 from haystack import Document
 
-from core.config import settings
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class VectorStorageClient:
         documents: List[Document], 
         store_type: str = "chroma"
     ) -> bool:
-        """Store documents in vector storage."""
+        """Store documents in vector app.storage."""
         try:
             # Get components
             document_store = self.get_document_store(org_id, store_type)
@@ -129,7 +129,7 @@ class VectorStorageClient:
         filters: Optional[Dict[str, Any]] = None,
         store_type: str = "chroma"
     ) -> List[Document]:
-        """Query documents from vector storage."""
+        """Query documents from vector app.storage."""
         try:
             # Get components
             text_embedder = self.get_text_embedder()

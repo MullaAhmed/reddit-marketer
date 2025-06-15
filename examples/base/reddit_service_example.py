@@ -5,14 +5,9 @@ This example demonstrates how to use the RedditService directly
 without going through the API layer.
 """
 
-import sys
-import os
 import asyncio
 
-# Add the app directory to the Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'app'))
-
-from services.reddit_service import RedditService
+from app.services.reddit_service import RedditService
 
 # Mock Reddit credentials for demonstration
 MOCK_REDDIT_CREDENTIALS = {

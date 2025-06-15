@@ -6,8 +6,8 @@ import logging
 from typing import List, Dict, Any, Optional
 
 from haystack import Document
-from clients.storage_client import VectorStorageClient
-from utils.text_processing import chunk_text
+from app.clients.storage_client import VectorStorageClient
+from app.utils.text_processing import chunk_text
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class VectorStorage:
     """
     
     def __init__(self, data_dir: str = "data"):
-        """Initialize vector storage."""
+        """Initialize vector app.storage."""
         self.data_dir = data_dir
         self.storage_client = VectorStorageClient(data_dir)
         self.logger = logger
@@ -32,7 +32,7 @@ class VectorStorage:
         metadata: Dict[str, Any] = None
     ) -> tuple[bool, str]:
         """
-        Store document chunks in vector storage.
+        Store document chunks in vector app.storage.
         
         Args:
             org_id: Organization ID
@@ -87,7 +87,7 @@ class VectorStorage:
         filters: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """
-        Query documents from vector storage.
+        Query documents from vector app.storage.
         
         Args:
             org_id: Organization ID

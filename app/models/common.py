@@ -1,5 +1,5 @@
 """
-Shared/common data models.
+Shared/common data app.models.
 """
 
 from pydantic import BaseModel, Field

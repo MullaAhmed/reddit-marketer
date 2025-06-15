@@ -6,10 +6,10 @@ import asyncio
 import logging
 from typing import Dict, List, Any, Tuple, Optional
 
-from clients.reddit_client import RedditClient
-from services.llm_service import LLMService
-from utils.text_processing import clean_text
-from storage.json_storage import JsonStorage
+from app.clients.reddit_client import RedditClient
+from app.services.llm_service import LLMService
+from app.utils.text_processing import clean_text
+from app.storage.json_storage import JsonStorage
 
 logger = logging.getLogger(__name__)
 

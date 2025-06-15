@@ -5,15 +5,11 @@ This example demonstrates how to use the DocumentService directly
 without going through the API layer.
 """
 
-import sys
-import os
 import asyncio
 
-# Add the app directory to the Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'app'))
 
-from services.document_service import DocumentService
-from models.document import DocumentQuery
+from app.services.document_service import DocumentService
+from app.models.document import DocumentQuery
 
 async def main():
     """Run document service examples."""

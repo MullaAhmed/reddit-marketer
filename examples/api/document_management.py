@@ -89,7 +89,7 @@ def main():
             Machine learning is a subset of artificial intelligence that enables computers to learn
             and make decisions from data without explicit programming. Common algorithms include
             linear regression, decision trees, and neural networks. Popular libraries include
-            scikit-learn, TensorFlow, and PyTorch for implementing ML models.
+            scikit-learn, TensorFlow, and PyTorch for implementing ML app.models.
             """,
             "metadata": {
                 "category": "ai",
@@ -103,7 +103,7 @@ def main():
             FastAPI is a modern, fast web framework for building APIs with Python. It provides
             automatic API documentation, data validation, and async support. Key features include
             type hints, dependency injection, and OpenAPI integration. It's ideal for building
-            high-performance REST APIs and microservices.
+            high-performance REST APIs and microapp.services.
             """,
             "metadata": {
                 "category": "web-development",

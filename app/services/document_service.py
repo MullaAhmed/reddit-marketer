@@ -5,12 +5,12 @@ Document processing service using RAG.
 import logging
 from typing import List, Dict, Any, Tuple, Optional
 
-from models.document import (
+from app.models.document import (
     Organization, Document, DocumentQuery, DocumentResponse, QueryResponse
 )
-from managers.document_manager import DocumentManager
-from storage.vector_storage import VectorStorage
-from utils.text_processing import chunk_text, clean_text
+from app.managers.document_manager import DocumentManager
+from app.storage.vector_storage import VectorStorage
+from app.utils.text_processing import chunk_text, clean_text
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
 """
-Campaign-related data models.
+Campaign-related data app.models.
 """
 
 from __future__ import annotations

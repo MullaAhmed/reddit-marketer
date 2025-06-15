@@ -4,16 +4,10 @@ Example: Campaign Service using Base Classes
 This example demonstrates how to use the CampaignService directly
 without going through the API layer.
 """
-
-import sys
-import os
 import asyncio
 
-# Add the app directory to the Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'app'))
-
-from services.campaign_service import CampaignService
-from models.campaign import (
+from app.services.campaign_service import CampaignService
+from app.models.campaign import (
     CampaignCreateRequest, SubredditDiscoveryRequest, 
     PostDiscoveryRequest, ResponseGenerationRequest, 
     ResponseExecutionRequest, ResponseTone
@@ -38,7 +32,7 @@ async def setup_sample_documents(campaign_service):
             We are experts in Python web development with over 5 years of experience building
             scalable web applications using FastAPI, Django, and Flask. Our team specializes
             in REST API development, microservices architecture, and database optimization.
-            We have successfully delivered projects for startups and enterprise clients.
+            We have successfully delivered projects for startups and enterprise app.clients.
             """,
             "metadata": {"category": "expertise", "technology": "python"}
         },

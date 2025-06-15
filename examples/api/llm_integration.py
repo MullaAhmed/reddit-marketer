@@ -82,7 +82,7 @@ def main():
         sample_content = """
         I'm a senior software engineer specializing in Python web development and machine learning.
         I have extensive experience with FastAPI, Django, and Flask for building REST APIs and web applications.
-        My ML expertise includes scikit-learn, TensorFlow, and PyTorch for building predictive models.
+        My ML expertise includes scikit-learn, TensorFlow, and PyTorch for building predictive app.models.
         I also work with cloud platforms like AWS and Azure, containerization with Docker and Kubernetes,
         and database technologies including PostgreSQL, MongoDB, and Redis.
         I'm passionate about clean code, test-driven development, and mentoring junior developers.

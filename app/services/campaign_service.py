@@ -6,15 +6,15 @@ import logging
 from typing import Dict, List, Any, Tuple, Optional
 from datetime import datetime, timezone
 
-from models.campaign import (
+from app.models.campaign import (
     Campaign, CampaignStatus, CampaignCreateRequest,
     SubredditDiscoveryRequest, PostDiscoveryRequest,
     ResponseGenerationRequest, ResponseExecutionRequest,
     TargetPost, PlannedResponse, PostedResponse, ResponseType
 )
-from services.document_service import DocumentService
-from services.reddit_service import RedditService
-from managers.campaign_manager import CampaignManager
+from app.services.document_service import DocumentService
+from app.services.reddit_service import RedditService
+from app.managers.campaign_manager import CampaignManager
 
 logger = logging.getLogger(__name__)
 

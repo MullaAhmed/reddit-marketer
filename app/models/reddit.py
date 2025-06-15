@@ -1,5 +1,5 @@
 """
-Reddit-related data models.
+Reddit-related data app.models.
 """
 
 from pydantic import BaseModel, Field

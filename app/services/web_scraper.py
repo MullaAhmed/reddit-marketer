@@ -8,8 +8,8 @@ from bs4 import BeautifulSoup
 from firecrawl import FirecrawlApp
 from typing import Optional
 
-from core.config import settings
-from utils.text_processing import clean_text
+from app.core.config import settings
+from app.utils.text_processing import clean_text
 
 logger = logging.getLogger(__name__)
 

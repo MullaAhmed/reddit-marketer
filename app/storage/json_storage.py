@@ -8,7 +8,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-from utils.file_utils import ensure_directory
+from app.utils.file_utils import ensure_directory
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ class JsonStorage:
     """
     
     def __init__(self, data_dir: str = "data"):
-        """Initialize JSON storage."""
+        """Initialize JSON app.storage."""
         self.data_dir = data_dir
         self.json_dir = os.path.join(data_dir, "json")
         ensure_directory(self.json_dir)

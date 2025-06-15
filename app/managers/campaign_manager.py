@@ -6,8 +6,8 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
-from storage.json_storage import JsonStorage
-from models.campaign import Campaign
+from app.storage.json_storage import JsonStorage
+from app.models.campaign import Campaign
 
 logger = logging.getLogger(__name__)
 

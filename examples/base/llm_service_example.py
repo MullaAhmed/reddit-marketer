@@ -5,14 +5,10 @@ This example demonstrates how to use the LLMService directly
 without going through the API layer.
 """
 
-import sys
-import os
 import asyncio
 
-# Add the app directory to the Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'app'))
 
-from services.llm_service import LLMService
+from app.services.llm_service import LLMService
 
 async def main():
     """Run LLM service examples."""

@@ -5,20 +5,17 @@ This example demonstrates a complete end-to-end workflow using
 the base service classes directly without the API layer.
 """
 
-import sys
-import os
+
 import asyncio
 import time
 
-# Add the app directory to the Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'app'))
 
-from services.campaign_service import CampaignService
-from services.document_service import DocumentService
-from services.reddit_service import RedditService
-from services.llm_service import LLMService
+from app.app.services.campaign_service import CampaignService
+from app.app.services.document_service import DocumentService
+from app.app.services.reddit_service import RedditService
+from app.services.llm_service import LLMService
 
-from models.campaign import (
+from app.models.campaign import (
     CampaignCreateRequest, SubredditDiscoveryRequest, 
     PostDiscoveryRequest, ResponseGenerationRequest, 
     ResponseExecutionRequest, ResponseTone
@@ -141,7 +138,7 @@ class CompleteWorkflowExample:
                 
                 # Test document querying
                 print("\n🔍 Testing document query...")
-                from models.document import DocumentQuery
+                from app.models.document import DocumentQuery
                 
                 query = DocumentQuery(
                     query="Python web development expertise",

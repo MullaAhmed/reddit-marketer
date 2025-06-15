@@ -1,5 +1,5 @@
 """
-Document-related data models.
+Document-related data app.models.
 """
 
 from __future__ import annotations

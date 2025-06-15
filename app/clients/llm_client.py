@@ -1,5 +1,5 @@
 """
-LLM provider clients.
+LLM provider app.clients.
 """
 
 import json
@@ -12,7 +12,7 @@ from groq import AsyncGroq
 from openai import AsyncOpenAI
 from langsmith import traceable
 
-from core.config import settings, OpenAIConfig, GoogleConfig, GroqConfig
+from app.core.config import settings, OpenAIConfig, GoogleConfig, GroqConfig
 
 logger = logging.getLogger(__name__)
 
@@ -261,7 +261,7 @@ class LLMClient:
                         generation_config["response_schema"] = response_schema
                 
                 # Generate response
-                response = self.gemini_client.models.generate_content(
+                response = self.gemini_client.app.models.generate_content(
                     model=model,
                     config=generation_config,
                     contents=conversation_history,

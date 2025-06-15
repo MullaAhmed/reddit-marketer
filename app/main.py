@@ -5,8 +5,8 @@ Main FastAPI application entry point.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.config import settings
-from core.middleware import setup_middleware
+from app.core.config import settings
+from app.core.middleware import setup_middleware
 from api.router import api_router
 
 app = FastAPI(

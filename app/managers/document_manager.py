@@ -5,8 +5,8 @@ Document storage manager.
 import logging
 from typing import List, Dict, Any, Optional
 
-from storage.json_storage import JsonStorage
-from models.document import Document, Organization
+from app.storage.json_storage import JsonStorage
+from app.models.document import Document, Organization
 
 logger = logging.getLogger(__name__)
 

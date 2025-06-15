@@ -5,10 +5,10 @@ FastAPI dependencies.
 from typing import Annotated
 from fastapi import Depends, HTTPException, Header
 
-from services.campaign_service import CampaignService
-from services.document_service import DocumentService
-from services.reddit_service import RedditService
-from services.llm_service import LLMService
+from app.services.campaign_service import CampaignService
+from app.services.document_service import DocumentService
+from app.services.reddit_service import RedditService
+from app.services.llm_service import LLMService
 
 
 def get_campaign_service() -> CampaignService:

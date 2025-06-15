@@ -1,12 +1,12 @@
 """
-Embeddings management for vector storage.
+Embeddings management for vector app.storage.
 """
 
 import logging
 from typing import List, Dict, Any, Optional
 import numpy as np
 
-from clients.storage_client import VectorStorageClient
+from app.clients.storage_client import VectorStorageClient
 
 logger = logging.getLogger(__name__)
 

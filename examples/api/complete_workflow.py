@@ -67,7 +67,7 @@ class RedditMarketingWorkflow:
                 "content": """
                 Our machine learning practice helps businesses leverage AI for predictive analytics,
                 recommendation systems, and automated decision making. We work with scikit-learn,
-                TensorFlow, and PyTorch to build custom ML models. Our services include data preprocessing,
+                TensorFlow, and PyTorch to build custom ML app.models. Our services include data preprocessing,
                 feature engineering, model training and validation, and deployment to production environments.
                 We specialize in supervised learning, unsupervised learning, and deep learning applications.
                 """,

@@ -224,8 +224,8 @@ reddit_credentials = {
 
 ### Programmatic Usage
 ```python
-from services.campaign_service import CampaignService
-from models.campaign import CampaignCreateRequest, ResponseTone
+from app.services.campaign_service import CampaignService
+from app.models.campaign import CampaignCreateRequest, ResponseTone
 
 # Initialize service
 campaign_service = CampaignService()
