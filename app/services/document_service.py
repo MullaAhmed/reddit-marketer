@@ -251,7 +251,7 @@ class DocumentService:
                     query="",  # Empty query to get all content
                     organization_id=organization_id,
                     filters={"document_id": doc_id},
-                    top_k=100  # Get all chunks
+                    top_k=50  # Get all chunks
                 )
                 
                 results = self.query_documents(query)

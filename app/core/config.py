@@ -7,7 +7,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-load_dotenv()
+load_dotenv(dotenv_path=".env",override=True)
 
 
 class OpenAIConfig:

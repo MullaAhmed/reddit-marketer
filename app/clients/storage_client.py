@@ -7,12 +7,14 @@ import logging
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
+
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack_integrations.document_stores.chroma import ChromaDocumentStore
 from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
 from haystack_integrations.components.retrievers.chroma import ChromaEmbeddingRetriever
 from haystack import Document
+from haystack.utils import Secret
 
 from app.core.config import settings
 
@@ -63,7 +65,7 @@ class VectorStorageClient:
         if model not in self._embedders:
             self._embedders[model] = OpenAIDocumentEmbedder(
                 model=model,
-                api_key=settings.OPENAI_API_KEY
+                api_key=Secret.from_token(settings.OPENAI_API_KEY)
             )
         return self._embedders[model]
     
