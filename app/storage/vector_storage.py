@@ -156,7 +156,7 @@ class VectorStorage:
             List of document chunks
         """
         try:
-            # Use filters to get all chunks for this document
+            # First try using filters
             filters = {"document_id": document_id}
             
             documents = self.storage_client.get_documents_by_filters(
@@ -164,6 +164,11 @@ class VectorStorage:
                 filters=filters,
                 store_type=store_type
             )
+            
+            # If no documents found with filters, try fallback method
+            if not documents:
+                self.logger.warning(f"No documents found with filters for {document_id}, trying fallback method")
+                documents = self._get_document_chunks_fallback(org_id, document_id, store_type)
             
             # Sort chunks by chunk_index to maintain order
             documents.sort(key=lambda doc: doc.meta.get("chunk_index", 0))
@@ -185,6 +190,34 @@ class VectorStorage:
             
         except Exception as e:
             self.logger.error(f"Error getting chunks for document {document_id}: {str(e)}")
+            return []
+    
+    def _get_document_chunks_fallback(
+        self,
+        org_id: str,
+        document_id: str,
+        store_type: str = "chroma"
+    ) -> List[Document]:
+        """
+        Fallback method to get document chunks by retrieving all documents and filtering manually.
+        """
+        try:
+            document_store = self.storage_client.get_document_store(org_id, store_type)
+            
+            # Get all documents without filters
+            all_documents = document_store.filter_documents()
+            
+            # Filter manually for the specific document_id
+            matching_documents = []
+            for doc in all_documents:
+                if doc.meta.get("document_id") == document_id:
+                    matching_documents.append(doc)
+            
+            self.logger.debug(f"Fallback method found {len(matching_documents)} chunks for document {document_id}")
+            return matching_documents
+            
+        except Exception as e:
+            self.logger.error(f"Error in fallback document retrieval for {document_id}: {str(e)}")
             return []
     
     def delete_document(self, org_id: str, document_id: str) -> bool:

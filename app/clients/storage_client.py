@@ -149,28 +149,40 @@ class VectorStorageClient:
         return retriever
     
     def _format_filters_for_chroma(self, filters: Dict[str, Any]) -> Dict[str, Any]:
-        """Format filters for ChromaDB compatibility."""
+        """Format filters for ChromaDB compatibility using proper where clause structure."""
         if not filters:
             return {}
         
-        # ChromaDB expects filters in a specific format with operators
-        formatted_filters = {}
+        # ChromaDB expects filters in a where clause format
+        # For simple equality filters, we can use the direct format
+        # For complex filters, we need to use the $and, $or operators
         
-        for key, value in filters.items():
+        if len(filters) == 1:
+            # Single filter - use direct format
+            key, value = next(iter(filters.items()))
             if isinstance(value, (str, int, float, bool)):
-                # Simple equality filter
-                formatted_filters[key] = {"$eq": value}
+                return {key: {"$eq": value}}
             elif isinstance(value, list):
-                # List of values (IN operator)
-                formatted_filters[key] = {"$in": value}
-            elif isinstance(value, dict):
-                # Already formatted filter
-                formatted_filters[key] = value
+                return {key: {"$in": value}}
+            elif isinstance(value, dict) and any(op in value for op in ["$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte"]):
+                # Already properly formatted
+                return {key: value}
             else:
-                # Default to equality
-                formatted_filters[key] = {"$eq": str(value)}
-        
-        return formatted_filters
+                return {key: {"$eq": str(value)}}
+        else:
+            # Multiple filters - use $and operator
+            conditions = []
+            for key, value in filters.items():
+                if isinstance(value, (str, int, float, bool)):
+                    conditions.append({key: {"$eq": value}})
+                elif isinstance(value, list):
+                    conditions.append({key: {"$in": value}})
+                elif isinstance(value, dict) and any(op in value for op in ["$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte"]):
+                    conditions.append({key: value})
+                else:
+                    conditions.append({key: {"$eq": str(value)}})
+            
+            return {"$and": conditions}
     
     def store_documents(
         self, 
@@ -300,6 +312,8 @@ class VectorStorageClient:
             formatted_filters = None
             if store_type == "chroma":
                 formatted_filters = self._format_filters_for_chroma(filters)
+                self.logger.debug(f"Original filters: {filters}")
+                self.logger.debug(f"Formatted filters for ChromaDB: {formatted_filters}")
             else:
                 formatted_filters = filters
             
