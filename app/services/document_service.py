@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Tuple, Optional
 from models.document import (
     Organization, Document, DocumentQuery, DocumentResponse, QueryResponse
 )
-from storage.managers.document_manager import DocumentManager
+from managers.document_manager import DocumentManager
 from storage.vector_storage import VectorStorage
 from utils.text_processing import chunk_text, clean_text
 

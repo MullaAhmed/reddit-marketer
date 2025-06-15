@@ -14,7 +14,7 @@ from models.campaign import (
 )
 from services.document_service import DocumentService
 from services.reddit_service import RedditService
-from storage.managers.campaign_manager import CampaignManager
+from managers.campaign_manager import CampaignManager
 
 logger = logging.getLogger(__name__)
 

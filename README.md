@@ -47,13 +47,13 @@ app/
 │   ├── text_processing.py          # Text utilities
 │   ├── file_utils.py               # File operations
 │   └── validation.py               # Data validation
-└── storage/                         # Data persistence layer
-    ├── json_storage.py              # JSON file operations
-    ├── vector_storage.py            # Vector database operations
-    └── managers/                    # Storage managers
-        ├── document_manager.py      # Document storage
-        ├── campaign_manager.py      # Campaign storage
-        └── embeddings_manager.py    # Embeddings management
+├── storage/                         # Data persistence layer
+│   ├── json_storage.py              # JSON file operations
+│   └── vector_storage.py            # Vector database operations
+└── managers/                        # Storage managers
+    ├── document_manager.py          # Document storage
+    ├── campaign_manager.py          # Campaign storage
+    └── embeddings_manager.py        # Embeddings management
 ```
 
 ### Key Design Principles
