@@ -11,7 +11,7 @@ from pathlib import Path
 from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack_integrations.document_stores.chroma import ChromaDocumentStore
 from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
-from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever
+from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever, InMemoryBM25Retriever
 from haystack_integrations.components.retrievers.chroma import ChromaEmbeddingRetriever
 from haystack import Document
 from haystack.utils import Secret
@@ -35,6 +35,7 @@ class VectorStorageClient:
         self._document_stores = {}
         self._embedders = {}
         self._retrievers = {}
+        self._bm25_retrievers = {}
     
     def get_document_store(self, org_id: str, store_type: str = "chroma") -> ChromaDocumentStore:
         """Get or create document store for organization."""
@@ -80,7 +81,7 @@ class VectorStorageClient:
         return self._embedders[embedder_key]
     
     def get_retriever(self, org_id: str, store_type: str = "chroma") -> ChromaEmbeddingRetriever:
-        """Get or create retriever for organization."""
+        """Get or create embedding retriever for organization."""
         cache_key = f"{org_id}_{store_type}_retriever"
         
         if cache_key in self._retrievers:
@@ -98,13 +99,45 @@ class VectorStorageClient:
         self._retrievers[cache_key] = retriever
         return retriever
     
+    def get_bm25_retriever(self, org_id: str, store_type: str = "chroma") -> InMemoryBM25Retriever:
+        """Get or create BM25 retriever for keyword search."""
+        cache_key = f"{org_id}_{store_type}_bm25"
+        
+        if cache_key in self._bm25_retrievers:
+            return self._bm25_retrievers[cache_key]
+        
+        document_store = self.get_document_store(org_id, store_type)
+        
+        # BM25 retriever only works with InMemoryDocumentStore
+        # For ChromaDB, we'll need to create a separate in-memory store for BM25
+        if store_type == "chroma":
+            # Create a separate in-memory store for BM25 search
+            in_memory_store = InMemoryDocumentStore()
+            
+            # Copy documents from ChromaDB to in-memory store for BM25
+            try:
+                # Get all documents from ChromaDB
+                all_docs = document_store.filter_documents()
+                if all_docs:
+                    in_memory_store.write_documents(all_docs)
+                    self.logger.debug(f"Copied {len(all_docs)} documents to in-memory store for BM25")
+            except Exception as e:
+                self.logger.warning(f"Could not copy documents for BM25: {e}")
+            
+            retriever = InMemoryBM25Retriever(document_store=in_memory_store)
+        else:
+            retriever = InMemoryBM25Retriever(document_store=document_store)
+        
+        self._bm25_retrievers[cache_key] = retriever
+        return retriever
+    
     def store_documents(
         self, 
         org_id: str, 
         documents: List[Document], 
         store_type: str = "chroma"
     ) -> bool:
-        """Store documents in vector app.storage."""
+        """Store documents in vector storage."""
         try:
             # Get components
             document_store = self.get_document_store(org_id, store_type)
@@ -115,6 +148,12 @@ class VectorStorageClient:
             
             # Store in document store
             document_store.write_documents(embedded_docs)
+            
+            # Update BM25 retriever cache if it exists
+            bm25_cache_key = f"{org_id}_{store_type}_bm25"
+            if bm25_cache_key in self._bm25_retrievers:
+                # Clear the cache so it gets recreated with new documents
+                del self._bm25_retrievers[bm25_cache_key]
             
             self.logger.info(f"Stored {len(documents)} documents for org {org_id}")
             return True
@@ -131,7 +170,7 @@ class VectorStorageClient:
         filters: Optional[Dict[str, Any]] = None,
         store_type: str = "chroma"
     ) -> List[Document]:
-        """Query documents from vector app.storage."""
+        """Query documents from vector storage using semantic search."""
         try:
             # Get components
             text_embedder = self.get_text_embedder()
@@ -151,6 +190,32 @@ class VectorStorageClient:
             
         except Exception as e:
             self.logger.error(f"Error querying documents for org {org_id}: {str(e)}")
+            return []
+    
+    def query_documents_bm25(
+        self,
+        org_id: str,
+        query: str,
+        top_k: int = 5,
+        filters: Optional[Dict[str, Any]] = None,
+        store_type: str = "chroma"
+    ) -> List[Document]:
+        """Query documents using BM25 keyword search."""
+        try:
+            # Get BM25 retriever
+            bm25_retriever = self.get_bm25_retriever(org_id, store_type)
+            
+            # Perform BM25 search
+            result = bm25_retriever.run(
+                query=query,
+                top_k=top_k,
+                filters=filters
+            )
+            
+            return result["documents"]
+            
+        except Exception as e:
+            self.logger.error(f"Error in BM25 search for org {org_id}: {str(e)}")
             return []
     
     def get_documents_by_filters(
