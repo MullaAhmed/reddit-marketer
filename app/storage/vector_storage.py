@@ -132,6 +132,55 @@ class VectorStorage:
             self.logger.error(f"Error querying documents: {str(e)}")
             return []
     
+    def get_document_chunks_by_document_id(
+        self,
+        org_id: str,
+        document_id: str,
+        store_type: str = "chroma"
+    ) -> List[Dict[str, Any]]:
+        """
+        Get all chunks for a specific document ID.
+        
+        Args:
+            org_id: Organization ID
+            document_id: Document ID to retrieve chunks for
+            store_type: Storage type
+            
+        Returns:
+            List of document chunks
+        """
+        try:
+            # Use filters to get all chunks for this document
+            filters = {"document_id": document_id}
+            
+            documents = self.storage_client.get_documents_by_filters(
+                org_id=org_id,
+                filters=filters,
+                store_type=store_type
+            )
+            
+            # Sort chunks by chunk_index to maintain order
+            documents.sort(key=lambda doc: doc.meta.get("chunk_index", 0))
+            
+            # Format results
+            results = []
+            for doc in documents:
+                result = {
+                    "content": doc.content,
+                    "metadata": doc.meta,
+                    "document_id": doc.meta.get("document_id", "unknown"),
+                    "title": doc.meta.get("title", "Untitled"),
+                    "chunk_index": doc.meta.get("chunk_index", 0)
+                }
+                results.append(result)
+            
+            self.logger.debug(f"Retrieved {len(results)} chunks for document {document_id}")
+            return results
+            
+        except Exception as e:
+            self.logger.error(f"Error getting chunks for document {document_id}: {str(e)}")
+            return []
+    
     def _keyword_search(
         self,
         org_id: str,

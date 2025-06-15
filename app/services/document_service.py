@@ -246,22 +246,25 @@ class DocumentService:
             contents = []
             
             for doc_id in document_ids:
-                # Query for all chunks of this document
-                query = DocumentQuery(
-                    query="",  # Empty query to get all content
-                    organization_id=organization_id,
-                    filters={"document_id": doc_id},
-                    top_k=50  # Get all chunks
+                # Get all chunks for this document using the new method
+                chunks = self.vector_storage.get_document_chunks_by_document_id(
+                    org_id=organization_id,
+                    document_id=doc_id
                 )
                 
-                results = self.query_documents(query)
-                
-                # Combine all chunks for this document
-                doc_content = "\n".join([doc.content for doc in results.documents])
-                if doc_content.strip():
-                    contents.append(doc_content)
+                if chunks:
+                    # Combine all chunks for this document in order
+                    doc_content = "\n".join([chunk['content'] for chunk in chunks])
+                    if doc_content.strip():
+                        contents.append(doc_content)
+                        self.logger.debug(f"Retrieved {len(chunks)} chunks for document {doc_id}")
+                else:
+                    self.logger.warning(f"No chunks found for document {doc_id}")
             
-            return "\n\n".join(contents)
+            combined_content = "\n\n".join(contents)
+            self.logger.info(f"Campaign context prepared: {len(combined_content)} characters from {len(document_ids)} documents")
+            
+            return combined_content
             
         except Exception as e:
             self.logger.error(f"Error getting campaign context: {str(e)}")

@@ -153,6 +153,27 @@ class VectorStorageClient:
             self.logger.error(f"Error querying documents for org {org_id}: {str(e)}")
             return []
     
+    def get_documents_by_filters(
+        self,
+        org_id: str,
+        filters: Dict[str, Any],
+        store_type: str = "chroma"
+    ) -> List[Document]:
+        """Get all documents matching the given filters without top_k limitation."""
+        try:
+            document_store = self.get_document_store(org_id, store_type)
+            
+            # Use the document store's filter_documents method to get all matching documents
+            # This bypasses the top_k limitation of retrievers
+            documents = document_store.filter_documents(filters=filters)
+            
+            self.logger.debug(f"Retrieved {len(documents)} documents with filters {filters}")
+            return documents
+            
+        except Exception as e:
+            self.logger.error(f"Error getting documents by filters for org {org_id}: {str(e)}")
+            return []
+    
     def get_storage_stats(self, org_id: str, store_type: str = "chroma") -> Dict[str, Any]:
         """Get storage statistics for organization."""
         try:
