@@ -148,41 +148,37 @@ class VectorStorageClient:
         self._query_text_retrievers[cache_key] = retriever
         return retriever
     
-    def _format_filters_for_chroma(self, filters: Dict[str, Any]) -> Dict[str, Any]:
-        """Format filters for ChromaDB compatibility using proper where clause structure."""
-        if not filters:
-            return {}
+    def get_document_by_id(self, org_id: str, document_id: str, store_type: str = "chroma") -> Optional[Document]:
+        """
+        Get a document in the collection by its ID using ChromaDB's direct get method.
         
-        # ChromaDB expects filters in a where clause format
-        # For simple equality filters, we can use the direct format
-        # For complex filters, we need to use the $and, $or operators
-        
-        if len(filters) == 1:
-            # Single filter - use direct format
-            key, value = next(iter(filters.items()))
-            if isinstance(value, (str, int, float, bool)):
-                return {key: {"$eq": value}}
-            elif isinstance(value, list):
-                return {key: {"$in": value}}
-            elif isinstance(value, dict) and any(op in value for op in ["$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte"]):
-                # Already properly formatted
-                return {key: value}
-            else:
-                return {key: {"$eq": str(value)}}
-        else:
-            # Multiple filters - use $and operator
-            conditions = []
-            for key, value in filters.items():
-                if isinstance(value, (str, int, float, bool)):
-                    conditions.append({key: {"$eq": value}})
-                elif isinstance(value, list):
-                    conditions.append({key: {"$in": value}})
-                elif isinstance(value, dict) and any(op in value for op in ["$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte"]):
-                    conditions.append({key: value})
-                else:
-                    conditions.append({key: {"$eq": str(value)}})
+        Args:
+            org_id: Organization ID
+            document_id: ID of the document to get
+            store_type: Storage type
             
-            return {"$and": conditions}
+        Returns:
+            Document: The document with the given ID, or None if not found
+        """
+        try:
+            document_store = self.get_document_store(org_id, store_type)
+            
+            if hasattr(document_store, 'get'):
+                # Use ChromaDB's direct get method
+                result = document_store.get(ids=[document_id])
+                
+                if result and "documents" in result and result["documents"]:
+                    return Document(
+                        id=document_id,
+                        content=result["documents"][0], 
+                        meta=result["metadatas"][0] if result["metadatas"] else {}
+                    )
+            
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"Error getting document by ID {document_id}: {str(e)}")
+            return None
     
     def store_documents(
         self, 
@@ -198,6 +194,19 @@ class VectorStorageClient:
             
             # Embed documents
             embedded_docs = embedder.run(documents)["documents"]
+            
+            # Ensure documents have IDs for direct retrieval
+            for i, doc in enumerate(embedded_docs):
+                if not hasattr(doc, 'id') or not doc.id:
+                    # Generate ID from metadata if available
+                    chunk_id = doc.meta.get("chunk_id")
+                    if chunk_id:
+                        doc.id = chunk_id
+                    else:
+                        # Fallback ID generation
+                        doc_id = doc.meta.get("document_id", f"doc_{i}")
+                        chunk_idx = doc.meta.get("chunk_index", i)
+                        doc.id = f"{doc_id}_chunk_{chunk_idx}"
             
             # Store in document store
             document_store.write_documents(embedded_docs)
@@ -327,6 +336,42 @@ class VectorStorageClient:
         except Exception as e:
             self.logger.error(f"Error getting documents by filters for org {org_id}: {str(e)}")
             return []
+    
+    def _format_filters_for_chroma(self, filters: Dict[str, Any]) -> Dict[str, Any]:
+        """Format filters for ChromaDB compatibility using proper where clause structure."""
+        if not filters:
+            return {}
+        
+        # ChromaDB expects filters in a where clause format
+        # For simple equality filters, we can use the direct format
+        # For complex filters, we need to use the $and, $or operators
+        
+        if len(filters) == 1:
+            # Single filter - use direct format
+            key, value = next(iter(filters.items()))
+            if isinstance(value, (str, int, float, bool)):
+                return {key: {"$eq": value}}
+            elif isinstance(value, list):
+                return {key: {"$in": value}}
+            elif isinstance(value, dict) and any(op in value for op in ["$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte"]):
+                # Already properly formatted
+                return {key: value}
+            else:
+                return {key: {"$eq": str(value)}}
+        else:
+            # Multiple filters - use $and operator
+            conditions = []
+            for key, value in filters.items():
+                if isinstance(value, (str, int, float, bool)):
+                    conditions.append({key: {"$eq": value}})
+                elif isinstance(value, list):
+                    conditions.append({key: {"$in": value}})
+                elif isinstance(value, dict) and any(op in value for op in ["$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte"]):
+                    conditions.append({key: value})
+                else:
+                    conditions.append({key: {"$eq": str(value)}})
+            
+            return {"$and": conditions}
     
     def get_storage_stats(self, org_id: str, store_type: str = "chroma") -> Dict[str, Any]:
         """Get storage statistics for organization."""

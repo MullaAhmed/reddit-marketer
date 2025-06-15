@@ -53,16 +53,21 @@ class VectorStorage:
             base_metadata = metadata or {}
             
             for i, chunk in enumerate(chunks):
+                # Create a unique ID for each chunk
+                chunk_id = f"{document_id}_chunk_{i}"
+                
                 doc_metadata = {
                     **base_metadata,
                     "document_id": document_id,
                     "organization_id": org_id,
                     "title": title,
                     "chunk_index": i,
-                    "chunk_count": len(chunks)
+                    "chunk_count": len(chunks),
+                    "chunk_id": chunk_id
                 }
                 
-                doc = Document(content=chunk, meta=doc_metadata)
+                # Use chunk_id as the document ID for direct retrieval
+                doc = Document(id=chunk_id, content=chunk, meta=doc_metadata)
                 documents.append(doc)
             
             # Store documents
@@ -145,7 +150,7 @@ class VectorStorage:
         store_type: str = "chroma"
     ) -> List[Dict[str, Any]]:
         """
-        Get all chunks for a specific document ID.
+        Get all chunks for a specific document ID using direct ChromaDB get method.
         
         Args:
             org_id: Organization ID
@@ -156,26 +161,53 @@ class VectorStorage:
             List of document chunks
         """
         try:
-            # First try using filters
-            filters = {"document_id": document_id}
+            # Get the document store
+            document_store = self.storage_client.get_document_store(org_id, store_type)
             
-            documents = self.storage_client.get_documents_by_filters(
-                org_id=org_id,
-                filters=filters,
-                store_type=store_type
-            )
+            # First, try to get chunk IDs by querying for documents with this document_id
+            # We'll use a simple approach: get all documents and filter
+            all_documents = document_store.filter_documents()
             
-            # If no documents found with filters, try fallback method
-            if not documents:
-                self.logger.warning(f"No documents found with filters for {document_id}, trying fallback method")
-                documents = self._get_document_chunks_fallback(org_id, document_id, store_type)
+            # Find all chunks for this document
+            document_chunks = []
+            chunk_ids = []
+            
+            for doc in all_documents:
+                if doc.meta.get("document_id") == document_id:
+                    document_chunks.append(doc)
+                    if hasattr(doc, 'id') and doc.id:
+                        chunk_ids.append(doc.id)
+            
+            # If we found chunks, try to use the direct get method for better performance
+            if chunk_ids and hasattr(document_store, 'get'):
+                try:
+                    # Use ChromaDB's direct get method
+                    result = document_store.get(ids=chunk_ids)
+                    
+                    if result and "documents" in result and result["documents"]:
+                        # Reconstruct Document objects from ChromaDB result
+                        direct_chunks = []
+                        for i, (doc_content, metadata) in enumerate(zip(result["documents"], result["metadatas"])):
+                            doc = Document(
+                                id=chunk_ids[i] if i < len(chunk_ids) else f"chunk_{i}",
+                                content=doc_content,
+                                meta=metadata
+                            )
+                            direct_chunks.append(doc)
+                        
+                        document_chunks = direct_chunks
+                        self.logger.debug(f"Retrieved {len(document_chunks)} chunks using direct get method for document {document_id}")
+                    
+                except Exception as e:
+                    self.logger.warning(f"Direct get method failed, using filtered results: {e}")
+                    # Fall back to the filtered results we already have
             
             # Sort chunks by chunk_index to maintain order
-            documents.sort(key=lambda doc: doc.meta.get("chunk_index", 0))
+            document_chunks.sort(key=lambda doc: doc.meta.get("chunk_index", 0))
             
             # Format results
             results = []
-            for doc in documents:
+            for doc in document_chunks:
                 result = {
                     "content": doc.content,
                     "metadata": doc.meta,
@@ -192,41 +224,39 @@ class VectorStorage:
             self.logger.error(f"Error getting chunks for document {document_id}: {str(e)}")
             return []
     
-    def _get_document_chunks_fallback(
-        self,
-        org_id: str,
-        document_id: str,
-        store_type: str = "chroma"
-    ) -> List[Document]:
-        """
-        Fallback method to get document chunks by retrieving all documents and filtering manually.
-        """
-        try:
-            document_store = self.storage_client.get_document_store(org_id, store_type)
-            
-            # Get all documents without filters
-            all_documents = document_store.filter_documents()
-            
-            # Filter manually for the specific document_id
-            matching_documents = []
-            for doc in all_documents:
-                if doc.meta.get("document_id") == document_id:
-                    matching_documents.append(doc)
-            
-            self.logger.debug(f"Fallback method found {len(matching_documents)} chunks for document {document_id}")
-            return matching_documents
-            
-        except Exception as e:
-            self.logger.error(f"Error in fallback document retrieval for {document_id}: {str(e)}")
-            return []
-    
     def delete_document(self, org_id: str, document_id: str) -> bool:
         """Delete all chunks of a document."""
         try:
-            # This would need to be implemented in the storage client
-            # For now, we'll log the operation
-            self.logger.info(f"Delete document {document_id} for org {org_id} (not implemented)")
-            return True
+            # Get all chunks for this document
+            chunks = self.get_document_chunks_by_document_id(org_id, document_id)
+            
+            if not chunks:
+                self.logger.info(f"No chunks found to delete for document {document_id}")
+                return True
+            
+            # Get the document store
+            document_store = self.storage_client.get_document_store(org_id)
+            
+            # Extract chunk IDs
+            chunk_ids = []
+            for chunk in chunks:
+                chunk_id = chunk["metadata"].get("chunk_id")
+                if chunk_id:
+                    chunk_ids.append(chunk_id)
+            
+            # Delete chunks using ChromaDB's delete method
+            if chunk_ids and hasattr(document_store, 'delete'):
+                try:
+                    document_store.delete(ids=chunk_ids)
+                    self.logger.info(f"Deleted {len(chunk_ids)} chunks for document {document_id}")
+                    return True
+                except Exception as e:
+                    self.logger.error(f"Error deleting chunks for document {document_id}: {e}")
+                    return False
+            else:
+                self.logger.warning(f"Could not delete document {document_id}: no chunk IDs found or delete method not available")
+                return False
+                
         except Exception as e:
             self.logger.error(f"Error deleting document {document_id}: {str(e)}")
             return False
@@ -268,7 +298,7 @@ class VectorStorage:
             Tuple of (success: bool, message: str)
         """
         try:
-            # Delete existing chunks (if implemented)
+            # Delete existing chunks
             self.delete_document(org_id, document_id)
             
             # Chunk new content
