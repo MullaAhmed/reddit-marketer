@@ -148,6 +148,30 @@ class VectorStorageClient:
         self._query_text_retrievers[cache_key] = retriever
         return retriever
     
+    def _format_filters_for_chroma(self, filters: Dict[str, Any]) -> Dict[str, Any]:
+        """Format filters for ChromaDB compatibility."""
+        if not filters:
+            return {}
+        
+        # ChromaDB expects filters in a specific format with operators
+        formatted_filters = {}
+        
+        for key, value in filters.items():
+            if isinstance(value, (str, int, float, bool)):
+                # Simple equality filter
+                formatted_filters[key] = {"$eq": value}
+            elif isinstance(value, list):
+                # List of values (IN operator)
+                formatted_filters[key] = {"$in": value}
+            elif isinstance(value, dict):
+                # Already formatted filter
+                formatted_filters[key] = value
+            else:
+                # Default to equality
+                formatted_filters[key] = {"$eq": str(value)}
+        
+        return formatted_filters
+    
     def store_documents(
         self, 
         org_id: str, 
@@ -196,11 +220,18 @@ class VectorStorageClient:
             # Embed query
             query_embedding = text_embedder.run(query)["embedding"]
             
+            # Format filters for ChromaDB if needed
+            formatted_filters = None
+            if filters and store_type == "chroma":
+                formatted_filters = self._format_filters_for_chroma(filters)
+            else:
+                formatted_filters = filters
+            
             # Retrieve documents
             result = retriever.run(
                 query_embedding=query_embedding,
                 top_k=top_k,
-                filters=filters
+                filters=formatted_filters
             )
             
             return result["documents"]
@@ -219,6 +250,13 @@ class VectorStorageClient:
     ) -> List[Document]:
         """Query documents using BM25 keyword search."""
         try:
+            # Format filters for ChromaDB if needed
+            formatted_filters = None
+            if filters and store_type == "chroma":
+                formatted_filters = self._format_filters_for_chroma(filters)
+            else:
+                formatted_filters = filters
+            
             if store_type == "chroma":
                 # Use ChromaQueryTextRetriever for ChromaDB
                 retriever = self.get_query_text_retriever(org_id, store_type)
@@ -227,7 +265,7 @@ class VectorStorageClient:
                 result = retriever.run(
                     query=query,
                     top_k=top_k,
-                    filters=filters
+                    filters=formatted_filters
                 )
             else:
                 # Use BM25 retriever for in-memory store
@@ -237,7 +275,7 @@ class VectorStorageClient:
                 result = bm25_retriever.run(
                     query=query,
                     top_k=top_k,
-                    filters=filters
+                    filters=formatted_filters
                 )
             
             return result["documents"]
@@ -258,9 +296,16 @@ class VectorStorageClient:
         try:
             document_store = self.get_document_store(org_id, store_type)
             
+            # Format filters for ChromaDB if needed
+            formatted_filters = None
+            if store_type == "chroma":
+                formatted_filters = self._format_filters_for_chroma(filters)
+            else:
+                formatted_filters = filters
+            
             # Use the document store's filter_documents method to get all matching documents
             # This bypasses the top_k limitation of retrievers
-            documents = document_store.filter_documents(filters=filters)
+            documents = document_store.filter_documents(filters=formatted_filters)
             
             self.logger.debug(f"Retrieved {len(documents)} documents with filters {filters}")
             return documents
