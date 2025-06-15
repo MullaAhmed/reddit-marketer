@@ -18,7 +18,7 @@ class VectorStorage:
     """
     
     def __init__(self, data_dir: str = "data"):
-        """Initialize vector app.storage."""
+        """Initialize vector storage."""
         self.data_dir = data_dir
         self.storage_client = VectorStorageClient(data_dir)
         self.logger = logger
@@ -32,7 +32,7 @@ class VectorStorage:
         metadata: Dict[str, Any] = None
     ) -> tuple[bool, str]:
         """
-        Store document chunks in vector app.storage.
+        Store document chunks in vector storage.
         
         Args:
             org_id: Organization ID
@@ -87,7 +87,7 @@ class VectorStorage:
         filters: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """
-        Query documents from vector app.storage.
+        Query documents from vector storage.
         
         Args:
             org_id: Organization ID
@@ -108,10 +108,16 @@ class VectorStorage:
                     top_k=top_k,
                     filters=filters
                 )
+            elif method == "keyword":
+                # Use BM25/ChromaQueryText keyword search
+                documents = self.storage_client.query_documents_bm25(
+                    org_id=org_id,
+                    query=query,
+                    top_k=top_k,
+                    filters=filters
+                )
             else:
-                # For keyword search, we'll use a simple text matching approach
-                # In a production system, you might want to use a proper keyword search index
-                documents = self._keyword_search(org_id, query, top_k, filters)
+                raise ValueError(f"Unsupported search method: {method}")
             
             # Format results
             results = []
@@ -125,7 +131,7 @@ class VectorStorage:
                 }
                 results.append(result)
             
-            self.logger.debug(f"Retrieved {len(results)} documents for query '{query}'")
+            self.logger.debug(f"Retrieved {len(results)} documents for query '{query}' using {method} search")
             return results
             
         except Exception as e:
@@ -179,48 +185,6 @@ class VectorStorage:
             
         except Exception as e:
             self.logger.error(f"Error getting chunks for document {document_id}: {str(e)}")
-            return []
-    
-    def _keyword_search(
-        self,
-        org_id: str,
-        query: str,
-        top_k: int,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[Document]:
-        """
-        Simple keyword search implementation.
-        In production, you'd want to use a proper search index like Elasticsearch.
-        """
-        try:
-            # Get all documents for the organization
-            all_docs = self.storage_client.query_documents(
-                org_id=org_id,
-                query="",  # Empty query to get all docs
-                top_k=1000,  # Get many docs for filtering
-                filters=filters
-            )
-            
-            # Simple keyword matching
-            query_words = set(query.lower().split())
-            scored_docs = []
-            
-            for doc in all_docs:
-                content_words = set(doc.content.lower().split())
-                
-                # Calculate simple overlap score
-                overlap = len(query_words.intersection(content_words))
-                if overlap > 0:
-                    score = overlap / len(query_words)
-                    doc.score = score
-                    scored_docs.append(doc)
-            
-            # Sort by score and return top_k
-            scored_docs.sort(key=lambda x: x.score, reverse=True)
-            return scored_docs[:top_k]
-            
-        except Exception as e:
-            self.logger.error(f"Error in keyword search: {str(e)}")
             return []
     
     def delete_document(self, org_id: str, document_id: str) -> bool:

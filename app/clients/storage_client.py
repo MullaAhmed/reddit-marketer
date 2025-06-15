@@ -12,7 +12,7 @@ from haystack.document_stores.in_memory import InMemoryDocumentStore
 from haystack_integrations.document_stores.chroma import ChromaDocumentStore
 from haystack.components.embedders import OpenAIDocumentEmbedder, OpenAITextEmbedder
 from haystack.components.retrievers.in_memory import InMemoryEmbeddingRetriever, InMemoryBM25Retriever
-from haystack_integrations.components.retrievers.chroma import ChromaEmbeddingRetriever
+from haystack_integrations.components.retrievers.chroma import ChromaEmbeddingRetriever, ChromaQueryTextRetriever
 from haystack import Document
 from haystack.utils import Secret
 
@@ -36,6 +36,7 @@ class VectorStorageClient:
         self._embedders = {}
         self._retrievers = {}
         self._bm25_retrievers = {}
+        self._query_text_retrievers = {}
     
     def get_document_store(self, org_id: str, store_type: str = "chroma") -> ChromaDocumentStore:
         """Get or create document store for organization."""
@@ -131,6 +132,22 @@ class VectorStorageClient:
         self._bm25_retrievers[cache_key] = retriever
         return retriever
     
+    def get_query_text_retriever(self, org_id: str, store_type: str = "chroma") -> ChromaQueryTextRetriever:
+        """Get or create ChromaQueryTextRetriever for keyword search on ChromaDB."""
+        cache_key = f"{org_id}_{store_type}_query_text"
+        
+        if cache_key in self._query_text_retrievers:
+            return self._query_text_retrievers[cache_key]
+        
+        if store_type != "chroma":
+            raise ValueError("ChromaQueryTextRetriever only works with ChromaDB")
+        
+        document_store = self.get_document_store(org_id, store_type)
+        retriever = ChromaQueryTextRetriever(document_store=document_store)
+        
+        self._query_text_retrievers[cache_key] = retriever
+        return retriever
+    
     def store_documents(
         self, 
         org_id: str, 
@@ -202,21 +219,34 @@ class VectorStorageClient:
     ) -> List[Document]:
         """Query documents using BM25 keyword search."""
         try:
-            # Get BM25 retriever
-            bm25_retriever = self.get_bm25_retriever(org_id, store_type)
-            
-            # Perform BM25 search
-            result = bm25_retriever.run(
-                query=query,
-                top_k=top_k,
-                filters=filters
-            )
+            if store_type == "chroma":
+                # Use ChromaQueryTextRetriever for ChromaDB
+                retriever = self.get_query_text_retriever(org_id, store_type)
+                
+                # Perform keyword search
+                result = retriever.run(
+                    query=query,
+                    top_k=top_k,
+                    filters=filters
+                )
+            else:
+                # Use BM25 retriever for in-memory store
+                bm25_retriever = self.get_bm25_retriever(org_id, store_type)
+                
+                # Perform BM25 search
+                result = bm25_retriever.run(
+                    query=query,
+                    top_k=top_k,
+                    filters=filters
+                )
             
             return result["documents"]
             
         except Exception as e:
-            self.logger.error(f"Error in BM25 search for org {org_id}: {str(e)}")
-            return []
+            self.logger.error(f"Error in keyword search for org {org_id}: {str(e)}")
+            # Fallback to semantic search if keyword search fails
+            self.logger.info(f"Falling back to semantic search for org {org_id}")
+            return self.query_documents(org_id, query, top_k, filters, store_type)
     
     def get_documents_by_filters(
         self,
