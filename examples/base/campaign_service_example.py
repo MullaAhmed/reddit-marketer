@@ -15,10 +15,10 @@ from app.models.campaign import (
 
 # Mock Reddit credentials for demonstration
 MOCK_REDDIT_CREDENTIALS = {
-    "client_id": "YRCfwCwFJnAgLjxxqzf5Nw",
-    "client_secret": "KHtchHTEuBDYRXVv0bjNNmZ8gT5MoQ",
-    "username": "lonlionli",
-    "password": "@Hmedmulla1"
+    "client_id": "demo_client_id",
+    "client_secret": "demo_client_secret",
+    "username": "demo_username",
+    "password": "demo_password"
 }
 
 async def setup_sample_documents(campaign_service):
