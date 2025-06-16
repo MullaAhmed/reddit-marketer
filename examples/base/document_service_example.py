@@ -6,7 +6,8 @@ without going through the API layer.
 """
 
 import asyncio
-
+import traceback
+  
 
 from app.services.document_service import DocumentService
 from app.models.document import DocumentQuery
@@ -169,7 +170,6 @@ async def main():
         
     except Exception as e:
         print(f"❌ Error in document service example: {e}")
-        import traceback
         traceback.print_exc()
 
 if __name__ == "__main__":

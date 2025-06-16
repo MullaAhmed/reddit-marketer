@@ -5,6 +5,9 @@ This example demonstrates how to use the CampaignService directly
 without going through the API layer.
 """
 import asyncio
+import traceback
+import os
+from dotenv import load_dotenv
 
 from app.services.campaign_service import CampaignService
 from app.models.campaign import (
@@ -13,12 +16,14 @@ from app.models.campaign import (
     ResponseExecutionRequest, ResponseTone
 )
 
+load_dotenv(dotenv_path=".env",override=True)
+
 # Mock Reddit credentials for demonstration
 MOCK_REDDIT_CREDENTIALS = {
-    "client_id": "YRCfwCwFJnAgLjxxqzf5Nw",
-    "client_secret": "KHtchHTEuBDYRXVv0bjNNmZ8gT5MoQ",
-    "username": "lonlionli",
-    "password": "@Hmedmulla1"
+    "client_id": os.getenv("REDDIT_CLIENT_ID"),
+    "client_secret": os.getenv("REDDIT_CLIENT_SECRET"),
+    "username": os.getenv("REDDIT_USERNAME"),
+    "password": os.getenv("REDDIT_PASSWORD")
 }
 
 async def setup_sample_documents(campaign_service):
@@ -139,8 +144,8 @@ async def main():
         
         post_request = PostDiscoveryRequest(
             subreddits=target_subreddits,
-            max_posts_per_subreddit=5,
-            time_filter="day",
+            max_posts_per_subreddit=50,
+            time_filter="week",
             reddit_credentials=MOCK_REDDIT_CREDENTIALS
         )
         
@@ -172,7 +177,7 @@ async def main():
         _, _, current_campaign = await campaign_service.get_campaign(campaign_id)
         
         if current_campaign.target_posts:
-            target_post_ids = [post.id for post in current_campaign.target_posts[:2]]
+            target_post_ids = [post.id for post in current_campaign.target_posts]
             
             response_request = ResponseGenerationRequest(
                 target_post_ids=target_post_ids,
@@ -306,7 +311,6 @@ async def main():
         
     except Exception as e:
         print(f"❌ Error in campaign service example: {e}")
-        import traceback
         traceback.print_exc()
     
     finally:

@@ -5,6 +5,7 @@ File utility functions.
 import os
 import shutil
 import hashlib
+import glob
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
@@ -159,7 +160,6 @@ def get_directory_size(directory: str) -> int:
 
 def find_files_by_pattern(directory: str, pattern: str) -> List[str]:
     """Find files matching a pattern."""
-    import glob
     
     search_pattern = os.path.join(directory, pattern)
     return glob.glob(search_pattern, recursive=True)

@@ -6,7 +6,8 @@ without going through the API layer.
 """
 
 import asyncio
-
+import traceback
+   
 
 from app.services.llm_service import LLMService
 
@@ -241,7 +242,6 @@ async def main():
         
     except Exception as e:
         print(f"❌ Error in LLM service example: {e}")
-        import traceback
         traceback.print_exc()
 
 if __name__ == "__main__":

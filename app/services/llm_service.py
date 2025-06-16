@@ -62,16 +62,8 @@ class LLMService:
             )
             
             content = response["choices"][0]["message"]["content"]
-            
-            # Parse JSON if requested
-            if response_format == "json":
-                try:
-                    return json.loads(content)
-                except json.JSONDecodeError as e:
-                    self.logger.error(f"Failed to parse JSON response: {str(e)}")
-                    return {"error": "Invalid JSON response"}
-            
-            return {"content": content}
+                  
+            return content
             
         except Exception as e:
             self.logger.error(f"Error generating completion: {str(e)}")

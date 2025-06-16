@@ -6,15 +6,20 @@ without going through the API layer.
 """
 
 import asyncio
+import traceback
+import os
+from dotenv import load_dotenv
 
 from app.services.reddit_service import RedditService
 
+load_dotenv(dotenv_path=".env",override=True)
+
 # Mock Reddit credentials for demonstration
 MOCK_REDDIT_CREDENTIALS = {
-    "client_id": "demo_client_id",
-    "client_secret": "demo_client_secret",
-    "username": "demo_username",
-    "password": "demo_password"
+    "client_id": os.getenv("REDDIT_CLIENT_ID"),
+    "client_secret": os.getenv("REDDIT_CLIENT_SECRET"),
+    "username": os.getenv("REDDIT_USERNAME"),
+    "password": os.getenv("REDDIT_PASSWORD")
 }
 
 async def main():
@@ -188,7 +193,6 @@ async def main():
         
     except Exception as e:
         print(f"❌ Error in Reddit service example: {e}")
-        import traceback
         traceback.print_exc()
     
     finally:

@@ -3,6 +3,8 @@ Storage clients for different storage backends.
 """
 
 import os
+import json
+
 import logging
 from typing import List, Dict, Any, Optional
 from pathlib import Path
@@ -420,7 +422,6 @@ class JSONStorageClient:
         file_path = self.get_file_path(filename)
         
         try:
-            import json
             with open(file_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
@@ -431,7 +432,6 @@ class JSONStorageClient:
         file_path = self.get_file_path(filename)
         
         try:
-            import json
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False, default=str)
             

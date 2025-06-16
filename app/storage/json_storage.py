@@ -4,6 +4,7 @@ JSON file storage operations.
 
 import json
 import os
+import shutil
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -174,7 +175,6 @@ class JsonStorage:
         
         try:
             if os.path.exists(source_path):
-                import shutil
                 shutil.copy2(source_path, backup_path)
                 self.logger.info(f"Created backup: {backup_path}")
                 return True

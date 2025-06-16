@@ -3,6 +3,8 @@ Document processing service using RAG.
 """
 
 import logging
+import time
+
 from typing import List, Dict, Any, Tuple, Optional
 
 from app.models.document import (
@@ -171,7 +173,6 @@ class DocumentService:
         Returns:
             QueryResponse with results and metadata
         """
-        import time
         start_time = time.time()
         
         try:

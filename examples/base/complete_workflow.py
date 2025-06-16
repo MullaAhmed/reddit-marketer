@@ -8,11 +8,13 @@ the base service classes directly without the API layer.
 
 import asyncio
 import time
+import random
+import os
+from dotenv import load_dotenv
 
-
-from app.app.services.campaign_service import CampaignService
-from app.app.services.document_service import DocumentService
-from app.app.services.reddit_service import RedditService
+from app.services.campaign_service import CampaignService
+from app.services.document_service import DocumentService
+from app.services.reddit_service import RedditService
 from app.services.llm_service import LLMService
 
 from app.models.campaign import (
@@ -21,12 +23,15 @@ from app.models.campaign import (
     ResponseExecutionRequest, ResponseTone
 )
 
+
+load_dotenv(dotenv_path=".env",override=True)
+
 # Mock Reddit credentials for demonstration
 MOCK_REDDIT_CREDENTIALS = {
-    "client_id": "demo_client_id",
-    "client_secret": "demo_client_secret",
-    "username": "demo_username",
-    "password": "demo_password"
+    "client_id": os.getenv("REDDIT_CLIENT_ID"),
+    "client_secret": os.getenv("REDDIT_CLIENT_SECRET"),
+    "username": os.getenv("REDDIT_USERNAME"),
+    "password": os.getenv("REDDIT_PASSWORD")
 }
 
 class CompleteWorkflowExample:
@@ -424,7 +429,6 @@ class CompleteWorkflowExample:
                 print(f"   🎯 Target post: {response['target_post_id']}")
                 
                 # Simulate posting with some success/failure
-                import random
                 posting_successful = random.random() > 0.2  # 80% success rate
                 
                 if posting_successful:

@@ -4,7 +4,9 @@ experiments
 *.ipynb
 */.env
 app/data
-*/*/__pycache__
+*/__pycache__/*
+*/*/__pycache__/*
 */*/*/__pycache__/*
 */*/*/*/__pycache__/*
 .env
+examples_data

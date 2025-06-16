@@ -3,6 +3,7 @@ Reddit operations service.
 """
 
 import asyncio
+import aiohttp
 import logging
 from typing import Dict, List, Any, Tuple, Optional
 
@@ -65,6 +66,7 @@ class RedditService:
         Returns:
             Tuple of (success, message, topics)
         """
+
         try:
             # Clean content
             clean_content = clean_text(content)
@@ -74,7 +76,7 @@ class RedditService:
             Analyze the following text and extract 5-10 relevant topics that could be used 
             to find related subreddits on Reddit. Return the topics as a JSON array.
             
-            Text: {clean_content[:2000]}
+            Text: {clean_content}
             
             Return format: {{"topics": ["topic1", "topic2", ...]}}
             """
@@ -120,34 +122,42 @@ class RedditService:
             
         Returns:
             Tuple of (success, message, discovery_data)
+            
         """
+
         try:
             # Extract topics first
             success, message, topics = await self.extract_topics_from_content(content, organization_id)
+            
             if not success:
                 return False, f"Topic extraction failed: {message}", {}
             
             # Search for subreddits related to each topic
             all_subreddits = {}
-            
-            import aiohttp
+       
             headers = {"User-Agent": "Mozilla/5.0 Reddit Marketing Agent"}
             
             async with aiohttp.ClientSession() as session:
-                # Search for subreddits for each topic
-                for topic in topics:
-                    try:
-                        subreddit_data = await self._search_subreddits_by_topic(topic, session, headers)
-                        all_subreddits.update(subreddit_data)
-                    except Exception as e:
-                        self.logger.warning(f"Error searching subreddits for topic '{topic}': {str(e)}")
+                # Create coroutine list directly, no create_task
+                coroutines = [
+                    self._search_subreddits_by_topic(topic, session, headers)
+                    for topic in topics
+                ]
+
+                results = await asyncio.gather(*coroutines, return_exceptions=True)
+
+                for topic, result in zip(topics, results):
+                    if isinstance(result, Exception):
+                        self.logger.warning(f"Error searching subreddits for topic '{topic}': {str(result)}")
+                    else:
+                        all_subreddits.update(result)
             
             # Filter subreddits by criteria
             filtered_subreddits = self._filter_subreddits_by_criteria(all_subreddits, min_subscribers)
-            
+
             # Rank subreddits by relevance using AI
             relevant_subreddit_names = await self._rank_subreddits_by_relevance(content, filtered_subreddits)
-            
+
             # Create final result
             result_subreddits = {}
             for name in relevant_subreddit_names:
@@ -267,12 +277,12 @@ class RedditService:
             # Build prompt for subreddit ranking
             subreddit_list = []
             for name, info in subreddit_data.items():
-                subreddit_list.append(f"r/{name}: {info['about'][:100]}")
+                subreddit_list.append(f"{name}: {info['about'][:100]}")
             
             prompt = f"""
             Based on the following content, rank the subreddits by relevance and return the top 10 most relevant ones.
             
-            Content: {content[:1000]}
+            Content: {content}
             
             Subreddits:
             {chr(10).join(subreddit_list)}
