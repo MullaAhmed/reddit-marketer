@@ -293,20 +293,7 @@ async def main():
         
         print("\n✅ Campaign service examples completed!")
         
-        print("\n💡 Summary of workflow:")
-        print("   1. ✅ Campaign created")
-        print("   2. ✅ Subreddits discovered (if documents available)")
-        print("   3. ⚠️  Posts discovered (requires real Reddit credentials)")
-        print("   4. ✅ Responses generated (if posts available)")
-        print("   5. ⚠️  Responses executed (requires real Reddit credentials)")
-        print("   6. ✅ Campaign status monitored")
-        
-        print("\n🔧 For real usage:")
-        print("   1. Replace mock Reddit credentials with real ones")
-        print("   2. Ensure documents are properly ingested")
-        print("   3. Review all generated responses before posting")
-        print("   4. Monitor campaign progress and adjust strategy")
-        
+
     except Exception as e:
         print(f"❌ Error in campaign service example: {e}")
         traceback.print_exc()
