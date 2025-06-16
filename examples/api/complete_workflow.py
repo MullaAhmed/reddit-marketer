@@ -396,7 +396,6 @@ class RedditMarketingWorkflow:
         print("This example demonstrates a complete end-to-end marketing campaign")
         print("using the Reddit Marketing AI Agent API.")
         print()
-        print("⚠️  Note: This example uses mock Reddit credentials for demonstration.")
         print("   Replace with real credentials for actual Reddit posting.")
         
         # Track workflow progress

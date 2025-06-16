@@ -82,7 +82,6 @@ async def main():
         
         # 3. Discover posts (will fail with mock credentials, but shows the structure)
         print("\n3. 📝 Discovering posts in subreddits...")
-        print("⚠️  Note: This will fail with mock credentials, but demonstrates the API")
         
         target_subreddits = ["python", "learnpython", "webdev"]
         topics_for_search = topics[:3] if topics else ["python", "web development"]
@@ -161,7 +160,6 @@ async def main():
         
         # 6. Post response (will fail with mock credentials)
         print("\n6. 🚀 Posting response to Reddit...")
-        print("⚠️  Note: This will fail with mock credentials")
         
         if 'content' in response_data:
             try:

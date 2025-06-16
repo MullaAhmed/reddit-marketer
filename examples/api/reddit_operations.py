@@ -99,8 +99,6 @@ def main():
     """Run Reddit operations examples."""
     print("🚀 Reddit Operations API Examples")
     print("=" * 50)
-    
-    print("⚠️  Note: This example uses mock Reddit credentials")
     print("   Replace MOCK_REDDIT_CREDENTIALS with real credentials for actual usage")
     print()
     

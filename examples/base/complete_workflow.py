@@ -252,7 +252,6 @@ class CompleteWorkflowExample:
             demo_subreddits = self.target_subreddits[:4] if self.target_subreddits else ["python", "learnpython", "webdev"]
             
             print(f"🎯 Searching in subreddits: {demo_subreddits}")
-            print("⚠️  Note: Using mock Reddit credentials - this will create mock data")
             
             post_request = PostDiscoveryRequest(
                 subreddits=demo_subreddits,
@@ -418,8 +417,6 @@ class CompleteWorkflowExample:
             if not self.planned_responses:
                 print("⚠️  No planned responses available for execution")
                 return False
-            
-            print("⚠️  Note: Using mock Reddit credentials - simulating response posting")
             
             # Simulate response execution
             execution_results = []

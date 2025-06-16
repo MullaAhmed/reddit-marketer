@@ -136,7 +136,6 @@ async def main():
         
         # 3. Discover posts
         print("\n3. 📝 Discovering posts...")
-        print("⚠️  Note: This will fail with mock credentials, but demonstrates the workflow")
         
         # Get the campaign to see discovered subreddits
         _, _, current_campaign = await campaign_service.get_campaign(campaign_id)
@@ -214,7 +213,6 @@ async def main():
         
         # 5. Execute responses
         print("\n5. 🚀 Executing responses...")
-        print("⚠️  Note: This will fail with mock credentials")
         
         # Get current campaign state
         _, _, current_campaign = await campaign_service.get_campaign(campaign_id)
