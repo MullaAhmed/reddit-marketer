@@ -130,10 +130,11 @@ class CampaignService:
             if not success:
                 return False, f"Topic extraction failed: {message}", None
             
-            # Discover subreddits using Reddit service (basic discovery)
-            success, message, discovery_data = await self.reddit_service.discover_subreddits(
-                campaign_context, 
-                campaign.organization_id
+            # Discover subreddits using Reddit service with extracted topics
+            success, message, discovery_data = await self.reddit_service.discover_subreddits_by_topics(
+                topics=topics,
+                organization_id=campaign.organization_id,
+                min_subscribers=10000
             )
             
             if not success:
@@ -155,6 +156,11 @@ class CampaignService:
                             relevant_subreddits[name] = all_subreddits[name]
                     
                     discovery_data["relevant_subreddits"] = relevant_subreddits
+                else:
+                    # Fallback: use all found subreddits
+                    discovery_data["relevant_subreddits"] = all_subreddits
+            else:
+                discovery_data["relevant_subreddits"] = {}
             
             # Update campaign with results
             campaign.selected_document_ids = request.document_ids
@@ -198,7 +204,7 @@ class CampaignService:
                 campaign.selected_document_ids
             )
             
-            # Extract topics for search
+            # Extract topics for search using LLM service
             success, message, topics = await self.llm_service.extract_topics_from_content(
                 campaign_context
             )

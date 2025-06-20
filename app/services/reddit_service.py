@@ -49,18 +49,17 @@ class RedditService:
     # SUBREDDIT DISCOVERY (Reddit API focused)
     # ========================================
     
-    async def discover_subreddits(
+    async def discover_subreddits_by_topics(
         self, 
-        content: str, 
+        topics: List[str], 
         organization_id: str,
         min_subscribers: int = 10000
     ) -> Tuple[bool, str, Dict[str, Any]]:
         """
-        Discover relevant subreddits based on content analysis.
-        Note: This method now requires external topic extraction and ranking.
+        Discover subreddits based on provided topics.
         
         Args:
-            content: Content to analyze
+            topics: List of topics to search for
             organization_id: Organization ID
             min_subscribers: Minimum subscriber count
             
@@ -68,12 +67,8 @@ class RedditService:
             Tuple of (success, message, discovery_data)
         """
         try:
-            # Note: Topic extraction should now be done by calling LLMService directly
-            # This is a placeholder that shows the Reddit API focused operations
-            
-            # For now, we'll extract some basic keywords as topics
-            # In practice, the calling service should provide topics from LLMService
-            basic_topics = self._extract_basic_keywords(content)
+            if not topics:
+                return False, "No topics provided", {}
             
             # Search for subreddits related to each topic
             all_subreddits = {}
@@ -84,12 +79,12 @@ class RedditService:
                 # Create coroutine list directly, no create_task
                 coroutines = [
                     self._search_subreddits_by_topic(topic, session, headers)
-                    for topic in basic_topics
+                    for topic in topics
                 ]
 
                 results = await asyncio.gather(*coroutines, return_exceptions=True)
 
-                for topic, result in zip(basic_topics, results):
+                for topic, result in zip(topics, results):
                     if isinstance(result, Exception):
                         self.logger.warning(f"Error searching subreddits for topic '{topic}': {str(result)}")
                     else:
@@ -97,48 +92,29 @@ class RedditService:
             
             # Filter subreddits by criteria
             filtered_subreddits = self._filter_subreddits_by_criteria(all_subreddits, min_subscribers)
-
-            # Note: Ranking should now be done by calling LLMService directly
-            # For now, return all filtered subreddits
-            result_subreddits = filtered_subreddits
             
             # Save results
             subreddits_data = {
-                "relevant_subreddits": result_subreddits,
-                "all_filtered_subreddits": filtered_subreddits,
-                "total_relevant": len(result_subreddits),
-                "total_filtered": len(filtered_subreddits),
+                "all_subreddits": filtered_subreddits,
+                "total_found": len(filtered_subreddits),
                 "min_subscribers": min_subscribers,
-                "organization_id": organization_id
+                "organization_id": organization_id,
+                "topics_used": topics
             }
             self.json_storage.save_data("subreddits.json", subreddits_data)
             
             discovery_data = {
-                "topics": basic_topics,
-                "relevant_subreddits": result_subreddits,
+                "topics": topics,
                 "all_subreddits": filtered_subreddits
             }
             
-            self.logger.info(f"Discovered {len(result_subreddits)} relevant subreddits for org {organization_id}")
+            self.logger.info(f"Discovered {len(filtered_subreddits)} subreddits for {len(topics)} topics")
             
-            return True, f"Discovered {len(result_subreddits)} relevant subreddits", discovery_data
+            return True, f"Discovered {len(filtered_subreddits)} subreddits", discovery_data
             
         except Exception as e:
             self.logger.error(f"Error discovering subreddits for org {organization_id}: {str(e)}")
             return False, f"Error discovering subreddits: {str(e)}", {}
-    
-    def _extract_basic_keywords(self, content: str) -> List[str]:
-        """Extract basic keywords as fallback for topic extraction."""
-        # Simple keyword extraction as fallback
-        # In practice, LLMService should be used for topic extraction
-        clean_content = clean_text(content)
-        words = clean_content.lower().split()
-        
-        # Filter for longer words that might be topics
-        keywords = [word for word in words if len(word) > 4 and word.isalpha()]
-        
-        # Return unique keywords, limited to 5
-        return list(set(keywords))[:5]
     
     async def _search_subreddits_by_topic(
         self, 
