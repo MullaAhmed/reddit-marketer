@@ -1,5 +1,5 @@
 """
-Embeddings management for vector app.storage.
+Embeddings management for vector storage.
 """
 
 import logging
