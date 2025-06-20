@@ -35,12 +35,13 @@ app/
 │   ├── document_service.py          # Document processing (RAG)
 │   ├── reddit_service.py            # Reddit operations
 │   ├── llm_service.py              # LLM interactions
-│   └── analytics_service.py        # Analytics and reporting
+│   ├── analytics_service.py        # Analytics and reporting
+│   └── web_scraper.py              # Web scraping service
 ├── models/                          # Data models
 │   ├── campaign.py                  # Campaign-related models
 │   ├── document.py                  # Document-related models
 │   ├── reddit.py                    # Reddit-related models
-│   └── common.py                    # Shared models
+│   └── common.py                    # Shared models (health status)
 ├── clients/                         # External service clients
 │   ├── reddit_client.py             # Reddit API client
 │   ├── llm_client.py               # LLM provider clients
@@ -56,8 +57,7 @@ app/
 ├── utils/                           # Utility functions
 │   ├── text_processing.py          # Text processing utilities
 │   ├── file_utils.py               # File management utilities
-│   ├── validation.py               # Data validation utilities
-│   └── web_scraping.py             # Web scraping utilities
+│   └── data_validator_util.py      # Data validation utilities
 ```
 
 ### Key Design Principles

@@ -4,7 +4,6 @@ Application middleware configuration.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 import time
 import logging
 
@@ -22,12 +21,6 @@ def setup_middleware(app: FastAPI) -> None:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
-    # Trusted host middleware (for production)
-    # app.add_middleware(
-    #     TrustedHostMiddleware,
-    #     allowed_hosts=["localhost", "127.0.0.1", "*.yourdomain.com"]
-    # )
     
     # Request timing middleware
     @app.middleware("http")

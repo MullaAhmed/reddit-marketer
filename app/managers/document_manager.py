@@ -6,7 +6,6 @@ import logging
 from typing import List, Dict, Any, Optional
 
 from app.storage.json_storage import JsonStorage
-from app.models.document import Document, Organization
 
 logger = logging.getLogger(__name__)
 

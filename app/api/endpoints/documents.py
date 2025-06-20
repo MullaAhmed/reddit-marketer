@@ -7,14 +7,14 @@ from typing import List, Dict, Any
 
 from app.core.dependencies import DocumentServiceDep, validate_organization_id
 from app.models.document import (
-    DocumentCreateRequest, DocumentResponse, DocumentQuery,
+    DocumentCreateRequest, DocumentOperationResponse, DocumentQuery,
     QueryResponse, Organization
 )
 
 router = APIRouter()
 
 
-@router.post("/ingest", response_model=DocumentResponse)
+@router.post("/ingest", response_model=DocumentOperationResponse)
 async def ingest_documents(
     documents: List[DocumentCreateRequest],
     organization_id: str,
@@ -43,7 +43,7 @@ async def ingest_documents(
     if not success:
         raise HTTPException(status_code=400, detail=message)
     
-    return DocumentResponse(
+    return DocumentOperationResponse(
         success=success,
         message=message,
         data={
@@ -66,7 +66,7 @@ async def query_documents(
     return response
 
 
-@router.get("/organizations/{organization_id}", response_model=DocumentResponse)
+@router.get("/organizations/{organization_id}", response_model=DocumentOperationResponse)
 async def get_organization_documents(
     organization_id: str,
     document_service: DocumentServiceDep = None
@@ -77,7 +77,7 @@ async def get_organization_documents(
     try:
         organization = document_service.get_or_create_organization(org_id)
         
-        return DocumentResponse(
+        return DocumentOperationResponse(
             success=True,
             message=f"Found organization with {organization.documents_count} documents",
             data={
@@ -89,7 +89,7 @@ async def get_organization_documents(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/upload", response_model=DocumentResponse)
+@router.post("/upload", response_model=DocumentOperationResponse)
 async def upload_document_file(
     file: UploadFile = File(...),
     organization_id: str = None,
@@ -128,7 +128,7 @@ async def upload_document_file(
     if not success:
         raise HTTPException(status_code=400, detail=message)
     
-    return DocumentResponse(
+    return DocumentOperationResponse(
         success=success,
         message=message,
         data={
@@ -154,14 +154,14 @@ async def delete_document(
     return {"success": True, "message": message}
 
 
-@router.get("/organizations", response_model=DocumentResponse)
+@router.get("/organizations", response_model=DocumentOperationResponse)
 async def list_organizations(
     document_service: DocumentServiceDep = None
 ):
     """List all organizations."""
     try:
         organizations = document_service.list_organizations()
-        return DocumentResponse(
+        return DocumentOperationResponse(
             success=True,
             message=f"Found {len(organizations)} organizations",
             data={"organizations": [org.model_dump() for org in organizations]}

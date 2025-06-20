@@ -104,7 +104,7 @@ class QueryResponse(BaseModel):
     processing_time_ms: float
 
 
-class DocumentResponse(BaseModel):
+class DocumentOperationResponse(BaseModel):
     """Generic response model for document operations."""
     
     success: bool
