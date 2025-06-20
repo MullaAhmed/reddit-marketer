@@ -387,7 +387,7 @@ class RedditService:
             prompt = f"""
             Analyze if this Reddit post is relevant for our marketing campaign and if we should respond.
             
-            Campaign Context: {campaign_context[:1000]}
+            Campaign Context: {campaign_context}
             
             Post Title: {post.get('title', '')}
             Post Content: {post.get('selftext', '')[:500]}
@@ -443,7 +443,7 @@ class RedditService:
             prompt = f"""
             Generate a helpful Reddit response based on the following context and post.
             
-            Context about my expertise: {campaign_context[:1000]}
+            Context about my expertise: {campaign_context}
             
             Post Title: {post.get('title', '')}
             Post Content: {post.get('selftext', '')}

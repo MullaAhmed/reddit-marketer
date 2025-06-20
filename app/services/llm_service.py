@@ -125,7 +125,7 @@ class LLMService:
         Analyze the following text and extract 5-10 relevant topics that could be used 
         to find related subreddits on Reddit. Return the topics as a JSON array.
         
-        Text: {content[:2000]}
+        Text: {content}
         
         Return format: {{"topics": ["topic1", "topic2", ...]}}
         """
@@ -142,7 +142,7 @@ class LLMService:
         prompt = f"""
         Based on the following content, rank the subreddits by relevance and return the top 10 most relevant ones.
         
-        Content: {content[:1000]}
+        Content: {content}
         
         Subreddits:
         {chr(10).join(subreddit_list)}
@@ -163,10 +163,10 @@ class LLMService:
         prompt = f"""
         Analyze if this Reddit post is relevant for our marketing campaign and if we should respond.
         
-        Campaign Context: {campaign_context[:1000]}
+        Campaign Context: {campaign_context}
         
         Post Title: {post_title}
-        Post Content: {post_content[:500]}
+        Post Content: {post_content}
         
         Analyze this post and return a JSON object with:
         - relevance_score (0.0 to 1.0)
@@ -189,7 +189,7 @@ class LLMService:
         prompt = f"""
         Generate a helpful Reddit response based on the following context and post.
         
-        Context about my expertise: {campaign_context[:1000]}
+        Context about the product: {campaign_context}
         
         Post Title: {post_title}
         Post Content: {post_content}

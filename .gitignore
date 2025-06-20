@@ -10,3 +10,4 @@ app/data
 */*/*/*/__pycache__/*
 .env
 examples_data
+examples
