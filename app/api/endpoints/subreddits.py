@@ -5,7 +5,7 @@ Subreddit discovery API endpoints.
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Dict, Any
 
-from app.core.dependencies import RedditServiceDep, validate_organization_id
+from app.core.app_dependencies import RedditServiceDep, validate_organization_id
 from app.models.reddit import SubredditDiscoveryRequest, SubredditResponse
 
 router = APIRouter()

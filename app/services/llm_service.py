@@ -7,7 +7,7 @@ import logging
 from typing import Optional, Dict, Any, List, Tuple
 from pydantic import BaseModel
 
-from app.core.config import settings, OpenAIConfig, GoogleConfig, GroqConfig
+from app.core.settings_config import settings, OpenAIConfig, GoogleConfig, GroqConfig
 from app.clients.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)

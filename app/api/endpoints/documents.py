@@ -5,7 +5,7 @@ Document management API endpoints.
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from typing import List, Dict, Any
 
-from app.core.dependencies import DocumentServiceDep, validate_organization_id
+from app.core.app_dependencies import DocumentServiceDep, validate_organization_id
 from app.models.document import (
     DocumentCreateRequest, DocumentResponse, DocumentQuery,
     QueryResponse, Organization
