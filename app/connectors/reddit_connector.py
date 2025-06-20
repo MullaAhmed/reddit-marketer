@@ -14,14 +14,14 @@ from app.repositories.json_repository import JsonRepository
 logger = logging.getLogger(__name__)
 
 
-class RedditService:
+class RedditConnector:
     """
     Service for Reddit-related operations focused on Reddit API interactions.
-    AI operations have been moved to LLMService for better separation of concerns.
+    AI operations have been moved to LLMOrchestrator for better separation of concerns.
     """
     
     def __init__(self, data_dir: str = "data"):
-        """Initialize the Reddit service."""
+        """Initialize the Reddit connector."""
         self.data_dir = data_dir
         self.json_repository = JsonRepository(data_dir)
         self.logger = logger

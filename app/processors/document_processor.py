@@ -17,14 +17,14 @@ from app.utils.text_processing import chunk_text, clean_text
 logger = logging.getLogger(__name__)
 
 
-class DocumentService:
+class DocumentProcessor:
     """
     Document processing service that handles document ingestion,
     storage, and retrieval using RAG techniques.
     """
     
     def __init__(self, data_dir: str = "data"):
-        """Initialize the document service."""
+        """Initialize the document processor."""
         self.data_dir = data_dir
         self.document_manager = DocumentManager(data_dir)
         self.vector_repository = VectorRepository(data_dir)
@@ -117,7 +117,7 @@ class DocumentService:
                     chunk_overlap=doc_dict.get('chunk_overlap', 200)
                 )
                 
-                # Store document chunks in vector storage
+                # Store document chunks in vector repository
                 success, message = self.vector_repository.store_document_chunks(
                     org_id=org_id,
                     document_id=doc.id,

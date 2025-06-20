@@ -1,34 +1,40 @@
 """
-FastAPI dependencies - Updated to include LLM service.
+FastAPI dependencies - Updated to use new orchestrators and processors.
 """
 
 from typing import Annotated
 from fastapi import Depends, HTTPException, Header
 
-from app.services.campaign_service import CampaignService
-from app.services.document_service import DocumentService
-from app.services.reddit_service import RedditService
-from app.services.llm_service import LLMService
+from app.orchestrators.campaign_orchestrator import CampaignOrchestrator
+from app.processors.document_processor import DocumentProcessor
+from app.connectors.reddit_connector import RedditConnector
+from app.orchestrators.llm_orchestrator import LLMOrchestrator
+from app.services.stats_service import StatsService
 
 
-def get_campaign_service() -> CampaignService:
-    """Get campaign service instance."""
-    return CampaignService()
+def get_campaign_orchestrator() -> CampaignOrchestrator:
+    """Get campaign orchestrator instance."""
+    return CampaignOrchestrator()
 
 
-def get_document_service() -> DocumentService:
-    """Get document service instance."""
-    return DocumentService()
+def get_document_processor() -> DocumentProcessor:
+    """Get document processor instance."""
+    return DocumentProcessor()
 
 
-def get_reddit_service() -> RedditService:
-    """Get Reddit service instance."""
-    return RedditService()
+def get_reddit_connector() -> RedditConnector:
+    """Get Reddit connector instance."""
+    return RedditConnector()
 
 
-def get_llm_service() -> LLMService:
-    """Get LLM service instance."""
-    return LLMService()
+def get_llm_orchestrator() -> LLMOrchestrator:
+    """Get LLM orchestrator instance."""
+    return LLMOrchestrator()
+
+
+def get_stats_service() -> StatsService:
+    """Get stats service instance."""
+    return StatsService()
 
 
 def validate_organization_id(organization_id: str) -> str:
@@ -49,7 +55,14 @@ def validate_api_key(x_api_key: Annotated[str, Header()] = None) -> str:
 
 
 # Type aliases for dependency injection
-CampaignServiceDep = Annotated[CampaignService, Depends(get_campaign_service)]
-DocumentServiceDep = Annotated[DocumentService, Depends(get_document_service)]
-RedditServiceDep = Annotated[RedditService, Depends(get_reddit_service)]
-LLMServiceDep = Annotated[LLMService, Depends(get_llm_service)]
+CampaignOrchestratorDep = Annotated[CampaignOrchestrator, Depends(get_campaign_orchestrator)]
+DocumentProcessorDep = Annotated[DocumentProcessor, Depends(get_document_processor)]
+RedditConnectorDep = Annotated[RedditConnector, Depends(get_reddit_connector)]
+LLMOrchestratorDep = Annotated[LLMOrchestrator, Depends(get_llm_orchestrator)]
+StatsServiceDep = Annotated[StatsService, Depends(get_stats_service)]
+
+# Legacy aliases for backward compatibility
+CampaignServiceDep = CampaignOrchestratorDep
+DocumentServiceDep = DocumentProcessorDep
+RedditServiceDep = RedditConnectorDep
+LLMServiceDep = LLMOrchestratorDep

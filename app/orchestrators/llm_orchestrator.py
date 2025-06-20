@@ -1,5 +1,5 @@
 """
-LLM service for AI interactions - Centralized AI operations.
+LLM orchestrator for AI interactions - Centralized AI operations.
 """
 
 import json
@@ -75,14 +75,14 @@ class PromptTemplates:
     """
 
 
-class LLMService:
+class LLMOrchestrator:
     """
-    Service for LLM interactions that orchestrates calls to different providers.
+    Orchestrator for LLM interactions that orchestrates calls to different providers.
     Centralized location for all AI operations.
     """
     
     def __init__(self):
-        """Initialize the LLM service."""
+        """Initialize the LLM orchestrator."""
         self.llm_client = LLMClient()
         self.logger = logger
         self.prompts = PromptTemplates()
@@ -117,7 +117,7 @@ class LLMService:
             
         except Exception as e:
             self.logger.error(f"Error in LLM completion: {str(e)}")
-            return False, f"LLM service error: {str(e)}", {}
+            return False, f"LLM orchestrator error: {str(e)}", {}
     
     async def generate_completion(
         self,
