@@ -7,7 +7,7 @@ from typing import Dict, Any
 import time
 from datetime import datetime, timezone
 
-from app.core.settings_config import settings
+from app.core.config import settings
 
 router = APIRouter()
 

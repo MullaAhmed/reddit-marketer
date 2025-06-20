@@ -17,14 +17,14 @@ from app.utils.text_processing import chunk_text, clean_text
 logger = logging.getLogger(__name__)
 
 
-class DocumentProcessor:
+class DocumentService:
     """
     Document processing service that handles document ingestion,
     storage, and retrieval using RAG techniques.
     """
     
     def __init__(self, data_dir: str = "data"):
-        """Initialize the document processor."""
+        """Initialize the document service."""
         self.data_dir = data_dir
         self.document_manager = DocumentManager(data_dir)
         self.vector_storage = VectorStorage(data_dir)

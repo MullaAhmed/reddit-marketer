@@ -5,7 +5,7 @@ Campaign management API endpoints.
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Dict, Any
 
-from app.core.app_dependencies import CampaignOrchestratorDep, validate_organization_id
+from app.core.dependencies import CampaignServiceDep, validate_organization_id
 from app.models.campaign import (
     Campaign, CampaignCreateRequest, CampaignResponse,
     SubredditDiscoveryRequest, PostDiscoveryRequest,
@@ -19,12 +19,12 @@ router = APIRouter()
 async def create_campaign(
     request: CampaignCreateRequest,
     organization_id: str = Query(..., description="Organization ID"),
-    campaign_orchestrator: CampaignOrchestratorDep = None
+    campaign_service: CampaignServiceDep = None
 ):
     """Create a new Reddit marketing campaign."""
     org_id = validate_organization_id(organization_id)
     
-    success, message, campaign = await campaign_orchestrator.create_campaign(
+    success, message, campaign = await campaign_service.create_campaign(
         org_id, request
     )
     
@@ -41,10 +41,10 @@ async def create_campaign(
 @router.get("/{campaign_id}", response_model=CampaignResponse)
 async def get_campaign(
     campaign_id: str,
-    campaign_orchestrator: CampaignOrchestratorDep = None
+    campaign_service: CampaignServiceDep = None
 ):
     """Get a campaign by ID."""
-    success, message, campaign = await campaign_orchestrator.get_campaign(campaign_id)
+    success, message, campaign = await campaign_service.get_campaign(campaign_id)
     
     if not success:
         raise HTTPException(status_code=404, detail=message)
@@ -59,12 +59,12 @@ async def get_campaign(
 @router.get("/", response_model=CampaignResponse)
 async def list_campaigns(
     organization_id: str = Query(..., description="Organization ID"),
-    campaign_orchestrator: CampaignOrchestratorDep = None
+    campaign_service: CampaignServiceDep = None
 ):
     """List all campaigns for an organization."""
     org_id = validate_organization_id(organization_id)
     
-    success, message, campaigns = await campaign_orchestrator.list_campaigns(org_id)
+    success, message, campaigns = await campaign_service.list_campaigns(org_id)
     
     return CampaignResponse(
         success=success,
@@ -77,10 +77,10 @@ async def list_campaigns(
 async def discover_subreddits(
     campaign_id: str,
     request: SubredditDiscoveryRequest,
-    campaign_orchestrator: CampaignOrchestratorDep = None
+    campaign_service: CampaignServiceDep = None
 ):
     """Discover relevant subreddits based on selected documents."""
-    success, message, data = await campaign_orchestrator.discover_subreddits(
+    success, message, data = await campaign_service.discover_subreddits(
         campaign_id, request
     )
     
@@ -98,10 +98,10 @@ async def discover_subreddits(
 async def discover_posts(
     campaign_id: str,
     request: PostDiscoveryRequest,
-    campaign_orchestrator: CampaignOrchestratorDep = None
+    campaign_service: CampaignServiceDep = None
 ):
     """Discover relevant posts and comments in target subreddits."""
-    success, message, data = await campaign_orchestrator.discover_posts(
+    success, message, data = await campaign_service.discover_posts(
         campaign_id, request
     )
     
@@ -119,10 +119,10 @@ async def discover_posts(
 async def generate_responses(
     campaign_id: str,
     request: ResponseGenerationRequest,
-    campaign_orchestrator: CampaignOrchestratorDep = None
+    campaign_service: CampaignServiceDep = None
 ):
     """Generate responses for target posts."""
-    success, message, data = await campaign_orchestrator.generate_responses(
+    success, message, data = await campaign_service.generate_responses(
         campaign_id, request
     )
     
@@ -140,10 +140,10 @@ async def generate_responses(
 async def execute_responses(
     campaign_id: str,
     request: ResponseExecutionRequest,
-    campaign_orchestrator: CampaignOrchestratorDep = None
+    campaign_service: CampaignServiceDep = None
 ):
     """Execute planned responses by posting to Reddit."""
-    success, message, data = await campaign_orchestrator.execute_responses(
+    success, message, data = await campaign_service.execute_responses(
         campaign_id, request
     )
     
@@ -160,10 +160,10 @@ async def execute_responses(
 @router.get("/{campaign_id}/status", response_model=CampaignResponse)
 async def get_campaign_status(
     campaign_id: str,
-    campaign_orchestrator: CampaignOrchestratorDep = None
+    campaign_service: CampaignServiceDep = None
 ):
     """Get detailed campaign status and progress."""
-    success, message, campaign = await campaign_orchestrator.get_campaign(campaign_id)
+    success, message, campaign = await campaign_service.get_campaign(campaign_id)
     
     if not success:
         raise HTTPException(status_code=404, detail=message)

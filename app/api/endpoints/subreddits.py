@@ -5,7 +5,7 @@ Subreddit discovery API endpoints.
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Dict, Any
 
-from app.core.app_dependencies import RedditConnectorDep, validate_organization_id
+from app.core.dependencies import RedditServiceDep, validate_organization_id
 from app.models.reddit import SubredditDiscoveryRequest, SubredditResponse
 
 router = APIRouter()
@@ -16,12 +16,12 @@ async def discover_subreddits(
     content: str,
     organization_id: str = Query(..., description="Organization ID"),
     min_subscribers: int = Query(10000, description="Minimum subscriber count"),
-    reddit_connector: RedditConnectorDep = None
+    reddit_service: RedditServiceDep = None
 ):
     """Discover relevant subreddits based on content analysis."""
     org_id = validate_organization_id(organization_id)
     
-    success, message, discovery_data = await reddit_connector.discover_subreddits(
+    success, message, discovery_data = await reddit_service.discover_subreddits(
         content, org_id, min_subscribers
     )
     
@@ -39,12 +39,12 @@ async def discover_subreddits(
 async def extract_topics(
     content: str,
     organization_id: str = Query(..., description="Organization ID"),
-    reddit_connector: RedditConnectorDep = None
+    reddit_service: RedditServiceDep = None
 ):
     """Extract topics from content for subreddit discovery."""
     org_id = validate_organization_id(organization_id)
     
-    success, message, topics = await reddit_connector.extract_topics_from_content(
+    success, message, topics = await reddit_service.extract_topics_from_content(
         content, org_id
     )
     
@@ -62,7 +62,7 @@ async def extract_topics(
 async def search_subreddits(
     query: str = Query(..., description="Search query"),
     limit: int = Query(25, description="Maximum results to return"),
-    reddit_connector: RedditConnectorDep = None
+    reddit_service: RedditServiceDep = None
 ):
     """Search for subreddits by name or topic."""
     try:
@@ -84,7 +84,7 @@ async def search_subreddits(
 @router.get("/{subreddit_name}/info")
 async def get_subreddit_info(
     subreddit_name: str,
-    reddit_connector: RedditConnectorDep = None
+    reddit_service: RedditServiceDep = None
 ):
     """Get information about a specific subreddit."""
     try:

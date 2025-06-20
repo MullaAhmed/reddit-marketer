@@ -5,7 +5,7 @@ Document management API endpoints.
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File
 from typing import List, Dict, Any
 
-from app.core.app_dependencies import DocumentProcessorDep, validate_organization_id
+from app.core.dependencies import DocumentServiceDep, validate_organization_id
 from app.models.document import (
     DocumentCreateRequest, DocumentResponse, DocumentQuery,
     QueryResponse, Organization
@@ -19,12 +19,12 @@ async def ingest_documents(
     documents: List[DocumentCreateRequest],
     organization_id: str = Query(..., description="Organization ID"),
     organization_name: str = Query(None, description="Organization name for auto-creation"),
-    document_processor: DocumentProcessorDep = None
+    document_service: DocumentServiceDep = None
 ):
     """Ingest multiple documents for an organization."""
     org_id = validate_organization_id(organization_id)
     
-    # Convert requests to dict format expected by processor
+    # Convert requests to dict format expected by service
     doc_dicts = []
     for doc_req in documents:
         doc_dict = {
@@ -36,7 +36,7 @@ async def ingest_documents(
         }
         doc_dicts.append(doc_dict)
     
-    success, message, document_ids = document_processor.ingest_documents(
+    success, message, document_ids = document_service.ingest_documents(
         doc_dicts, org_id, organization_name
     )
     
@@ -56,26 +56,26 @@ async def ingest_documents(
 @router.post("/query", response_model=QueryResponse)
 async def query_documents(
     query: DocumentQuery,
-    document_processor: DocumentProcessorDep = None
+    document_service: DocumentServiceDep = None
 ):
     """Query documents using semantic or keyword search."""
     if query.organization_id:
         validate_organization_id(query.organization_id)
     
-    response = document_processor.query_documents(query)
+    response = document_service.query_documents(query)
     return response
 
 
 @router.get("/organizations/{organization_id}", response_model=DocumentResponse)
 async def get_organization_documents(
     organization_id: str,
-    document_processor: DocumentProcessorDep = None
+    document_service: DocumentServiceDep = None
 ):
     """Get all documents for an organization."""
     org_id = validate_organization_id(organization_id)
     
     try:
-        organization = document_processor.get_or_create_organization(org_id)
+        organization = document_service.get_or_create_organization(org_id)
         
         return DocumentResponse(
             success=True,
@@ -94,7 +94,7 @@ async def upload_document_file(
     file: UploadFile = File(...),
     organization_id: str = Query(..., description="Organization ID"),
     title: str = Query(None, description="Document title (defaults to filename)"),
-    document_processor: DocumentProcessorDep = None
+    document_service: DocumentServiceDep = None
 ):
     """Upload and process a document file."""
     org_id = validate_organization_id(organization_id)
@@ -121,7 +121,7 @@ async def upload_document_file(
         }
     }
     
-    success, message, document_ids = document_processor.ingest_documents(
+    success, message, document_ids = document_service.ingest_documents(
         [doc_dict], org_id
     )
     
@@ -143,12 +143,12 @@ async def upload_document_file(
 async def delete_document(
     organization_id: str,
     document_id: str,
-    document_processor: DocumentProcessorDep = None
+    document_service: DocumentServiceDep = None
 ):
     """Delete a specific document."""
     org_id = validate_organization_id(organization_id)
     
-    # This would need to be implemented in the document processor
+    # This would need to be implemented in the document service
     raise HTTPException(
         status_code=501, 
         detail="Document deletion not yet implemented"
@@ -157,11 +157,11 @@ async def delete_document(
 
 @router.get("/organizations", response_model=DocumentResponse)
 async def list_organizations(
-    document_processor: DocumentProcessorDep = None
+    document_service: DocumentServiceDep = None
 ):
     """List all organizations."""
     try:
-        # This would need to be implemented in the document processor
+        # This would need to be implemented in the document service
         raise HTTPException(
             status_code=501,
             detail="Organization listing not yet implemented"

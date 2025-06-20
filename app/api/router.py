@@ -8,7 +8,6 @@ from api.endpoints.campaigns import router as campaigns_router
 from api.endpoints.documents import router as documents_router
 from api.endpoints.subreddits import router as subreddits_router
 from api.endpoints.health import router as health_router
-from api.endpoints.stats import router as stats_router
 
 api_router = APIRouter()
 
@@ -29,12 +28,6 @@ api_router.include_router(
     subreddits_router,
     prefix="/subreddits",
     tags=["Subreddits"]
-)
-
-api_router.include_router(
-    stats_router,
-    prefix="/stats",
-    tags=["Statistics"]
 )
 
 api_router.include_router(

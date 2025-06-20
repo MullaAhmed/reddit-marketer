@@ -12,32 +12,32 @@ from app.models.campaign import (
     ResponseGenerationRequest, ResponseExecutionRequest,
     TargetPost, PlannedResponse, PostedResponse, ResponseType
 )
-from app.processors.document_processor import DocumentProcessor
-from app.connectors.reddit_connector import RedditConnector
-from app.orchestrators.llm_orchestrator import LLMOrchestrator
+from app.services.document_service import DocumentService
+from app.services.reddit_service import RedditService
+from app.services.llm_service import LLMService
 from app.managers.campaign_manager import CampaignManager
 
 logger = logging.getLogger(__name__)
 
 
-class CampaignOrchestrator:
+class CampaignService:
     """
     Campaign orchestration service that coordinates between
     document processing, Reddit operations, and LLM services.
     """
     
     def __init__(self, data_dir: str = "data"):
-        """Initialize the campaign orchestrator."""
+        """Initialize the campaign service."""
         self.data_dir = data_dir
         self.campaign_manager = CampaignManager(data_dir)
-        self.document_processor = DocumentProcessor(data_dir)
-        self.reddit_connector = RedditConnector(data_dir)
-        self.llm_orchestrator = LLMOrchestrator()
+        self.document_service = DocumentService(data_dir)
+        self.reddit_service = RedditService(data_dir)
+        self.llm_service = LLMService()
         self.logger = logger
     
     async def cleanup(self):
         """Clean up resources."""
-        await self.reddit_connector.cleanup()
+        await self.reddit_service.cleanup()
     
     # ========================================
     # CAMPAIGN MANAGEMENT
@@ -122,16 +122,16 @@ class CampaignOrchestrator:
             if not campaign_context:
                 return False, "No valid documents found", None
             
-            # Extract topics using LLM orchestrator
-            success, message, topics = await self.llm_orchestrator.extract_topics_from_content(
+            # Extract topics using LLM service
+            success, message, topics = await self.llm_service.extract_topics_from_content(
                 campaign_context
             )
             
             if not success:
                 return False, f"Topic extraction failed: {message}", None
             
-            # Discover subreddits using Reddit connector with extracted topics
-            success, message, discovery_data = await self.reddit_connector.discover_subreddits_by_topics(
+            # Discover subreddits using Reddit service with extracted topics
+            success, message, discovery_data = await self.reddit_service.discover_subreddits_by_topics(
                 topics=topics,
                 organization_id=campaign.organization_id,
                 min_subscribers=10000
@@ -140,10 +140,10 @@ class CampaignOrchestrator:
             if not success:
                 return False, message, None
             
-            # Rank subreddits using LLM orchestrator
+            # Rank subreddits using LLM service
             all_subreddits = discovery_data.get("all_subreddits", {})
             if all_subreddits:
-                success, message, ranked_subreddits = await self.llm_orchestrator.rank_subreddits_by_relevance(
+                success, message, ranked_subreddits = await self.llm_service.rank_subreddits_by_relevance(
                     campaign_context, 
                     all_subreddits
                 )
@@ -204,16 +204,16 @@ class CampaignOrchestrator:
                 campaign.selected_document_ids
             )
             
-            # Extract topics for search using LLM orchestrator
-            success, message, topics = await self.llm_orchestrator.extract_topics_from_content(
+            # Extract topics for search using LLM service
+            success, message, topics = await self.llm_service.extract_topics_from_content(
                 campaign_context
             )
             
             if not success:
                 topics = ["general"]  # Fallback
             
-            # Discover posts using Reddit connector
-            success, message, posts = await self.reddit_connector.discover_posts(
+            # Discover posts using Reddit service
+            success, message, posts = await self.reddit_service.discover_posts(
                 subreddits=request.subreddits,
                 topics=topics,
                 reddit_credentials=request.reddit_credentials,
@@ -224,11 +224,11 @@ class CampaignOrchestrator:
             if not success:
                 return False, message, None
             
-            # Analyze posts for relevance using LLM orchestrator
+            # Analyze posts for relevance using LLM service
             target_posts = []
             for post in posts:
                 try:
-                    success, _, analysis = await self.llm_orchestrator.analyze_post_relevance(
+                    success, _, analysis = await self.llm_service.analyze_post_relevance(
                         post_title=post.get("title", ""),
                         post_content=post.get("selftext", ""),
                         campaign_context=campaign_context,
@@ -309,8 +309,8 @@ class CampaignOrchestrator:
                     self.logger.info(f"Skipping post by {target_post.author} - already responded")
                     continue
                 
-                # Generate response using LLM orchestrator
-                success, _, response_data = await self.llm_orchestrator.generate_reddit_response(
+                # Generate response using LLM service
+                success, _, response_data = await self.llm_service.generate_reddit_response(
                     post_title=target_post.title,
                     post_content=target_post.content,
                     campaign_context=campaign_context,
@@ -375,8 +375,8 @@ class CampaignOrchestrator:
                 if not target_post:
                     continue
                 
-                # Post the response using Reddit connector
-                success, message, result = await self.reddit_connector.post_response(
+                # Post the response using Reddit service
+                success, message, result = await self.reddit_service.post_response(
                     post_id=target_post.reddit_post_id,
                     response_content=planned_response.response_content,
                     reddit_credentials=request.reddit_credentials,
@@ -428,7 +428,7 @@ class CampaignOrchestrator:
     ) -> str:
         """Get combined context from campaign documents."""
         try:
-            return await self.document_processor.get_campaign_context(organization_id, document_ids)
+            return await self.document_service.get_campaign_context(organization_id, document_ids)
         except Exception as e:
             self.logger.error(f"Error getting campaign context: {str(e)}")
             return ""

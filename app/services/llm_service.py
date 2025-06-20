@@ -1,5 +1,5 @@
 """
-LLM orchestrator for AI interactions - Centralized AI operations.
+LLM service for AI interactions - Centralized AI operations.
 """
 
 import json
@@ -7,7 +7,7 @@ import logging
 from typing import Optional, Dict, Any, List, Tuple
 from pydantic import BaseModel
 
-from app.core.settings_config import settings, OpenAIConfig, GoogleConfig, GroqConfig
+from app.core.config import settings, OpenAIConfig, GoogleConfig, GroqConfig
 from app.clients.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
@@ -75,14 +75,14 @@ class PromptTemplates:
     """
 
 
-class LLMOrchestrator:
+class LLMService:
     """
-    Orchestrator for LLM interactions that orchestrates calls to different providers.
+    Service for LLM interactions that orchestrates calls to different providers.
     Centralized location for all AI operations.
     """
     
     def __init__(self):
-        """Initialize the LLM orchestrator."""
+        """Initialize the LLM service."""
         self.llm_client = LLMClient()
         self.logger = logger
         self.prompts = PromptTemplates()
@@ -117,7 +117,7 @@ class LLMOrchestrator:
             
         except Exception as e:
             self.logger.error(f"Error in LLM completion: {str(e)}")
-            return False, f"LLM orchestrator error: {str(e)}", {}
+            return False, f"LLM service error: {str(e)}", {}
     
     async def generate_completion(
         self,
