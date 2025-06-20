@@ -8,7 +8,6 @@ from uuid import uuid4
 
 from haystack import Document
 from app.clients.storage_client import VectorStorageClient
-from app.utils.text_processing import chunk_text
 
 logger = logging.getLogger(__name__)
 
@@ -288,6 +287,7 @@ class VectorStorage:
             self.delete_document(org_id, document_id)
             
             # Chunk new content
+            from app.utils.text_processing import chunk_text
             chunks = chunk_text(new_content, chunk_size, chunk_overlap)
             
             # Store new chunks

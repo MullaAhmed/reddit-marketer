@@ -5,7 +5,6 @@ LLM provider clients.
 import json
 import logging
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel
 
 from google import genai
 from groq import AsyncGroq
@@ -214,7 +213,7 @@ class LLMClient:
         top_k: int = GoogleConfig.TOP_K,
         max_tokens: int = GoogleConfig.MAX_TOKENS,
         response_format: Optional[Dict] = None,
-        response_schema: Optional[BaseModel] = None,
+        response_schema: Optional[Any] = None,
         chat_name: Optional[str] = None,
         project_name: Optional[str] = None
     ) -> Dict[str, Any]:

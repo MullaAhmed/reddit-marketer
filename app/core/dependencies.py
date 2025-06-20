@@ -3,7 +3,7 @@ FastAPI dependencies - Updated to include analytics service.
 """
 
 from typing import Annotated
-from fastapi import Depends, HTTPException, Header
+from fastapi import Depends, HTTPException
 
 from app.services.campaign_service import CampaignService
 from app.services.document_service import DocumentService
@@ -132,13 +132,6 @@ def validate_organization_id(organization_id: str) -> str:
             detail="Invalid organization ID format"
         )
     return organization_id
-
-
-def validate_api_key(x_api_key: Annotated[str, Header()] = None) -> str:
-    """Validate API key if required."""
-    # For now, we'll skip API key validation
-    # In production, implement proper API key validation
-    return x_api_key
 
 
 # Type aliases for dependency injection

@@ -2,7 +2,7 @@
 Document management API endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File
 from typing import List, Dict, Any
 
 from app.core.dependencies import DocumentServiceDep, validate_organization_id
@@ -17,8 +17,8 @@ router = APIRouter()
 @router.post("/ingest", response_model=DocumentResponse)
 async def ingest_documents(
     documents: List[DocumentCreateRequest],
-    organization_id: str = Query(..., description="Organization ID"),
-    organization_name: str = Query(None, description="Organization name for auto-creation"),
+    organization_id: str,
+    organization_name: str = None,
     document_service: DocumentServiceDep = None
 ):
     """Ingest multiple documents for an organization."""
@@ -92,8 +92,8 @@ async def get_organization_documents(
 @router.post("/upload", response_model=DocumentResponse)
 async def upload_document_file(
     file: UploadFile = File(...),
-    organization_id: str = Query(..., description="Organization ID"),
-    title: str = Query(None, description="Document title (defaults to filename)"),
+    organization_id: str = None,
+    title: str = None,
     document_service: DocumentServiceDep = None
 ):
     """Upload and process a document file."""

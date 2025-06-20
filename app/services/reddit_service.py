@@ -7,7 +7,6 @@ import logging
 from typing import Dict, List, Any, Tuple, Optional
 
 from app.clients.reddit_client import RedditClient
-from app.utils.text_processing import clean_text
 from app.storage.json_storage import JsonStorage
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@
 Analytics API endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from typing import Dict, Any
 
 from app.core.dependencies import AnalyticsServiceDep, validate_organization_id

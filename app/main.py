@@ -3,7 +3,6 @@ Main FastAPI application entry point.
 """
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.settings import settings
 from app.core.middleware import setup_middleware

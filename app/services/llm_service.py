@@ -5,7 +5,6 @@ LLM service for AI interactions - Centralized AI operations.
 import json
 import logging
 from typing import Optional, Dict, Any, List, Tuple
-from pydantic import BaseModel
 
 from app.core.settings import settings, OpenAIConfig, GoogleConfig, GroqConfig
 from app.clients.llm_client import LLMClient

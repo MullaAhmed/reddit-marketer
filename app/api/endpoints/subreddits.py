@@ -2,7 +2,7 @@
 Subreddit discovery API endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any
 
 from app.core.dependencies import RedditServiceDep, validate_organization_id
@@ -14,8 +14,8 @@ router = APIRouter()
 @router.post("/discover", response_model=SubredditResponse)
 async def discover_subreddits(
     content: str,
-    organization_id: str = Query(..., description="Organization ID"),
-    min_subscribers: int = Query(10000, description="Minimum subscriber count"),
+    organization_id: str,
+    min_subscribers: int = 10000,
     reddit_service: RedditServiceDep = None
 ):
     """Discover relevant subreddits based on content analysis."""
@@ -38,7 +38,7 @@ async def discover_subreddits(
 @router.post("/extract-topics", response_model=SubredditResponse)
 async def extract_topics(
     content: str,
-    organization_id: str = Query(..., description="Organization ID"),
+    organization_id: str,
     reddit_service: RedditServiceDep = None
 ):
     """Extract topics from content for subreddit discovery."""
@@ -60,8 +60,8 @@ async def extract_topics(
 
 @router.get("/search")
 async def search_subreddits(
-    query: str = Query(..., description="Search query"),
-    limit: int = Query(25, description="Maximum results to return"),
+    query: str,
+    limit: int = 25,
     reddit_service: RedditServiceDep = None
 ):
     """Search for subreddits by name or topic."""

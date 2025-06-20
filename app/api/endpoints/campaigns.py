@@ -2,7 +2,7 @@
 Campaign management API endpoints.
 """
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from typing import List, Dict, Any
 
 from app.core.dependencies import CampaignServiceDep, validate_organization_id
@@ -18,7 +18,7 @@ router = APIRouter()
 @router.post("/", response_model=CampaignResponse)
 async def create_campaign(
     request: CampaignCreateRequest,
-    organization_id: str = Query(..., description="Organization ID"),
+    organization_id: str,
     campaign_service: CampaignServiceDep = None
 ):
     """Create a new Reddit marketing campaign."""
@@ -58,7 +58,7 @@ async def get_campaign(
 
 @router.get("/", response_model=CampaignResponse)
 async def list_campaigns(
-    organization_id: str = Query(..., description="Organization ID"),
+    organization_id: str,
     campaign_service: CampaignServiceDep = None
 ):
     """List all campaigns for an organization."""

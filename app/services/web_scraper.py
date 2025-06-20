@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from firecrawl import FirecrawlApp
 from typing import Optional
 
-from app.core.settings_config import settings
+from app.core.settings import settings
 from app.utils.text_processing import clean_text
 
 logger = logging.getLogger(__name__)
