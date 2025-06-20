@@ -1,10 +1,10 @@
 """
-LLM service for AI interactions.
+LLM service for AI interactions - Centralized AI operations.
 """
 
 import json
 import logging
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from pydantic import BaseModel
 
 from app.core.config import settings, OpenAIConfig, GoogleConfig, GroqConfig
@@ -13,15 +13,111 @@ from app.clients.llm_client import LLMClient
 logger = logging.getLogger(__name__)
 
 
+class PromptTemplates:
+    """Centralized prompt templates for consistent AI interactions."""
+    
+    TOPIC_EXTRACTION = """
+    Analyze the following text and extract 5-10 relevant topics that could be used 
+    to find related subreddits on Reddit. Return the topics as a JSON array.
+    
+    Text: {content}
+    
+    Return format: {{"topics": ["topic1", "topic2", ...]}}
+    """
+    
+    SUBREDDIT_RANKING = """
+    Based on the following content, rank the subreddits by relevance and return the top 10 most relevant ones.
+    
+    Content: {content}
+    
+    Subreddits:
+    {subreddit_list}
+    
+    Return format: {{"subreddits": ["subreddit1", "subreddit2", ...]}}
+    """
+    
+    POST_RELEVANCE_ANALYSIS = """
+    Analyze if this Reddit post is relevant for our marketing campaign and if we should respond.
+    
+    Campaign Context: {campaign_context}
+    
+    Post Title: {post_title}
+    Post Content: {post_content}
+    
+    Analyze this post and return a JSON object with:
+    - relevance_score (0.0 to 1.0)
+    - relevance_reason (brief explanation)
+    - should_respond (boolean)
+    
+    Return format: {{"relevance_score": 0.8, "relevance_reason": "...", "should_respond": true}}
+    """
+    
+    REDDIT_RESPONSE_GENERATION = """
+    Generate a helpful Reddit response based on the following context and post.
+    
+    Context about my expertise: {campaign_context}
+    
+    Post Title: {post_title}
+    Post Content: {post_content}
+    Subreddit: r/{subreddit}
+    
+    Generate a response that:
+    1. Adds value to the conversation
+    2. Is natural and not overly promotional
+    3. Uses a {tone} tone
+    4. Is 1-3 paragraphs long
+    
+    Return a JSON object with:
+    - content (the response text)
+    - confidence (0.0 to 1.0 how confident you are this is a good response)
+    
+    Return format: {{"content": "...", "confidence": 0.8}}
+    """
+
+
 class LLMService:
     """
     Service for LLM interactions that orchestrates calls to different providers.
+    Centralized location for all AI operations.
     """
     
     def __init__(self):
         """Initialize the LLM service."""
         self.llm_client = LLMClient()
         self.logger = logger
+        self.prompts = PromptTemplates()
+    
+    async def _generate_completion_with_error_handling(
+        self,
+        prompt: str,
+        response_format: str = "json",
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        model: Optional[str] = None
+    ) -> Tuple[bool, str, Dict[str, Any]]:
+        """
+        Generate completion with standardized error handling.
+        
+        Returns:
+            Tuple of (success: bool, message: str, result: Dict[str, Any])
+        """
+        try:
+            result = await self.generate_completion(
+                prompt=prompt,
+                response_format=response_format,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                model=model
+            )
+            
+            if "error" in result:
+                return False, f"LLM error: {result['error']}", {}
+            
+            return True, "Success", result
+            
+        except Exception as e:
+            self.logger.error(f"Error in LLM completion: {str(e)}")
+            return False, f"LLM service error: {str(e)}", {}
     
     async def generate_completion(
         self,
@@ -119,92 +215,221 @@ class LLMService:
             self.logger.error(f"Error generating chat completion with {provider}: {str(e)}")
             return {"error": str(e)}
     
-    async def extract_topics(self, content: str) -> List[str]:
-        """Extract topics from content."""
-        prompt = f"""
-        Analyze the following text and extract 5-10 relevant topics that could be used 
-        to find related subreddits on Reddit. Return the topics as a JSON array.
-        
-        Text: {content}
-        
-        Return format: {{"topics": ["topic1", "topic2", ...]}}
-        """
-        
-        response = await self.generate_completion(prompt, response_format="json")
-        return response.get("topics", [])
+    # ========================================
+    # DOMAIN-SPECIFIC AI OPERATIONS
+    # ========================================
     
-    async def rank_subreddits(self, content: str, subreddits: Dict[str, Any]) -> List[str]:
-        """Rank subreddits by relevance to content."""
-        subreddit_list = []
-        for name, info in subreddits.items():
-            subreddit_list.append(f"r/{name}: {info.get('about', '')[:100]}")
-        
-        prompt = f"""
-        Based on the following content, rank the subreddits by relevance and return the top 10 most relevant ones.
-        
-        Content: {content}
-        
-        Subreddits:
-        {chr(10).join(subreddit_list)}
-        
-        Return format: {{"subreddits": ["subreddit1", "subreddit2", ...]}}
+    async def extract_topics_from_content(
+        self, 
+        content: str
+    ) -> Tuple[bool, str, List[str]]:
         """
+        Extract topics from content using AI analysis.
         
-        response = await self.generate_completion(prompt, response_format="json")
-        return response.get("subreddits", [])
+        Args:
+            content: Content to analyze
+            
+        Returns:
+            Tuple of (success, message, topics)
+        """
+        try:
+            prompt = self.prompts.TOPIC_EXTRACTION.format(content=content)
+            
+            success, message, response = await self._generate_completion_with_error_handling(
+                prompt=prompt,
+                response_format="json"
+            )
+            
+            if not success:
+                return False, message, []
+            
+            topics = response.get("topics", [])
+            
+            self.logger.info(f"Extracted {len(topics)} topics from content")
+            return True, f"Extracted {len(topics)} topics", topics
+            
+        except Exception as e:
+            self.logger.error(f"Error extracting topics: {str(e)}")
+            return False, f"Error extracting topics: {str(e)}", []
+    
+    async def rank_subreddits_by_relevance(
+        self, 
+        content: str, 
+        subreddit_data: Dict[str, Dict[str, Any]]
+    ) -> Tuple[bool, str, List[str]]:
+        """
+        Use AI to rank subreddits by relevance to content.
+        
+        Args:
+            content: Content to analyze
+            subreddit_data: Dictionary of subreddit info
+            
+        Returns:
+            Tuple of (success, message, ranked_subreddits)
+        """
+        try:
+            # Build subreddit list for prompt
+            subreddit_list = []
+            for name, info in subreddit_data.items():
+                subreddit_list.append(f"{name}: {info.get('about', '')[:100]}")
+            
+            prompt = self.prompts.SUBREDDIT_RANKING.format(
+                content=content,
+                subreddit_list=chr(10).join(subreddit_list)
+            )
+            
+            success, message, response = await self._generate_completion_with_error_handling(
+                prompt=prompt,
+                response_format="json"
+            )
+            
+            if not success:
+                return False, message, list(subreddit_data.keys())
+            
+            subreddits = response.get("subreddits", [])
+            
+            self.logger.info(f"Ranked {len(subreddits)} subreddits by relevance")
+            return True, f"Ranked {len(subreddits)} subreddits", subreddits
+            
+        except Exception as e:
+            self.logger.error(f"Error ranking subreddits: {str(e)}")
+            # Fallback: return all subreddit names
+            return False, f"Error ranking subreddits: {str(e)}", list(subreddit_data.keys())
     
     async def analyze_post_relevance(
         self, 
         post_title: str, 
         post_content: str, 
-        campaign_context: str
-    ) -> Dict[str, Any]:
-        """Analyze post relevance for campaign."""
-        prompt = f"""
-        Analyze if this Reddit post is relevant for our marketing campaign and if we should respond.
-        
-        Campaign Context: {campaign_context}
-        
-        Post Title: {post_title}
-        Post Content: {post_content}
-        
-        Analyze this post and return a JSON object with:
-        - relevance_score (0.0 to 1.0)
-        - relevance_reason (brief explanation)
-        - should_respond (boolean)
-        
-        Return format: {{"relevance_score": 0.8, "relevance_reason": "...", "should_respond": true}}
+        campaign_context: str,
+        subreddit: str = ""
+    ) -> Tuple[bool, str, Dict[str, Any]]:
         """
+        Analyze if a post is relevant for the campaign.
         
-        return await self.generate_completion(prompt, response_format="json")
+        Args:
+            post_title: Post title
+            post_content: Post content
+            campaign_context: Campaign context from documents
+            subreddit: Subreddit name (optional)
+            
+        Returns:
+            Tuple of (success, message, analysis)
+        """
+        try:
+            prompt = self.prompts.POST_RELEVANCE_ANALYSIS.format(
+                campaign_context=campaign_context,
+                post_title=post_title,
+                post_content=post_content[:500]  # Limit content length
+            )
+            
+            success, message, response = await self._generate_completion_with_error_handling(
+                prompt=prompt,
+                response_format="json"
+            )
+            
+            if not success:
+                return False, message, {}
+            
+            # Ensure required fields exist
+            analysis = {
+                "relevance_score": response.get("relevance_score", 0.0),
+                "relevance_reason": response.get("relevance_reason", ""),
+                "should_respond": response.get("should_respond", False)
+            }
+            
+            self.logger.debug(f"Analyzed post relevance: {analysis['relevance_score']:.2f}")
+            return True, "Post relevance analyzed", analysis
+            
+        except Exception as e:
+            self.logger.error(f"Error analyzing post relevance: {str(e)}")
+            return False, f"Error analyzing post relevance: {str(e)}", {}
     
     async def generate_reddit_response(
         self, 
         post_title: str, 
         post_content: str, 
         campaign_context: str, 
+        tone: str = "helpful",
+        subreddit: str = ""
+    ) -> Tuple[bool, str, Dict[str, Any]]:
+        """
+        Generate a response for a Reddit post.
+        
+        Args:
+            post_title: Post title
+            post_content: Post content
+            campaign_context: Campaign context
+            tone: Response tone
+            subreddit: Subreddit name
+            
+        Returns:
+            Tuple of (success, message, response_data)
+        """
+        try:
+            prompt = self.prompts.REDDIT_RESPONSE_GENERATION.format(
+                campaign_context=campaign_context,
+                post_title=post_title,
+                post_content=post_content,
+                subreddit=subreddit,
+                tone=tone
+            )
+            
+            success, message, response = await self._generate_completion_with_error_handling(
+                prompt=prompt,
+                response_format="json"
+            )
+            
+            if not success:
+                return False, message, {}
+            
+            # Ensure required fields exist
+            response_data = {
+                "content": response.get("content", ""),
+                "confidence": response.get("confidence", 0.0)
+            }
+            
+            self.logger.info(f"Generated response with confidence: {response_data['confidence']:.2f}")
+            return True, "Response generated successfully", response_data
+            
+        except Exception as e:
+            self.logger.error(f"Error generating response: {str(e)}")
+            return False, f"Error generating response: {str(e)}", {}
+    
+    # ========================================
+    # LEGACY COMPATIBILITY METHODS
+    # ========================================
+    
+    async def extract_topics(self, content: str) -> List[str]:
+        """Legacy method for backward compatibility."""
+        success, _, topics = await self.extract_topics_from_content(content)
+        return topics if success else []
+    
+    async def rank_subreddits(self, content: str, subreddits: Dict[str, Any]) -> List[str]:
+        """Legacy method for backward compatibility."""
+        success, _, ranked = await self.rank_subreddits_by_relevance(content, subreddits)
+        return ranked if success else []
+    
+    async def analyze_post_relevance_legacy(
+        self, 
+        post_title: str, 
+        post_content: str, 
+        campaign_context: str
+    ) -> Dict[str, Any]:
+        """Legacy method for backward compatibility."""
+        success, _, analysis = await self.analyze_post_relevance(
+            post_title, post_content, campaign_context
+        )
+        return analysis if success else {}
+    
+    async def generate_reddit_response_legacy(
+        self, 
+        post_title: str, 
+        post_content: str, 
+        campaign_context: str, 
         tone: str = "helpful"
     ) -> Dict[str, Any]:
-        """Generate a Reddit response."""
-        prompt = f"""
-        Generate a helpful Reddit response based on the following context and post.
-        
-        Context about the product: {campaign_context}
-        
-        Post Title: {post_title}
-        Post Content: {post_content}
-        
-        Generate a response that:
-        1. Adds value to the conversation
-        2. Is natural and not overly promotional
-        3. Uses a {tone} tone
-        4. Is 1-3 paragraphs long
-        
-        Return a JSON object with:
-        - content (the response text)
-        - confidence (0.0 to 1.0 how confident you are this is a good response)
-        
-        Return format: {{"content": "...", "confidence": 0.8}}
-        """
-        
-        return await self.generate_completion(prompt, response_format="json")
+        """Legacy method for backward compatibility."""
+        success, _, response_data = await self.generate_reddit_response(
+            post_title, post_content, campaign_context, tone
+        )
+        return response_data if success else {}

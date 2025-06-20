@@ -1,5 +1,5 @@
 """
-Campaign orchestration service.
+Campaign orchestration service - Updated to use centralized LLM service.
 """
 
 import logging
@@ -14,6 +14,7 @@ from app.models.campaign import (
 )
 from app.services.document_service import DocumentService
 from app.services.reddit_service import RedditService
+from app.services.llm_service import LLMService
 from app.managers.campaign_manager import CampaignManager
 
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 class CampaignService:
     """
     Campaign orchestration service that coordinates between
-    document processing, Reddit operations, and campaign management.
+    document processing, Reddit operations, and LLM services.
     """
     
     def __init__(self, data_dir: str = "data"):
@@ -31,6 +32,7 @@ class CampaignService:
         self.campaign_manager = CampaignManager(data_dir)
         self.document_service = DocumentService(data_dir)
         self.reddit_service = RedditService(data_dir)
+        self.llm_service = LLMService()
         self.logger = logger
     
     async def cleanup(self):
@@ -120,7 +122,15 @@ class CampaignService:
             if not campaign_context:
                 return False, "No valid documents found", None
             
-            # Discover subreddits using Reddit service
+            # Extract topics using LLM service
+            success, message, topics = await self.llm_service.extract_topics_from_content(
+                campaign_context
+            )
+            
+            if not success:
+                return False, f"Topic extraction failed: {message}", None
+            
+            # Discover subreddits using Reddit service (basic discovery)
             success, message, discovery_data = await self.reddit_service.discover_subreddits(
                 campaign_context, 
                 campaign.organization_id
@@ -128,6 +138,23 @@ class CampaignService:
             
             if not success:
                 return False, message, None
+            
+            # Rank subreddits using LLM service
+            all_subreddits = discovery_data.get("all_subreddits", {})
+            if all_subreddits:
+                success, message, ranked_subreddits = await self.llm_service.rank_subreddits_by_relevance(
+                    campaign_context, 
+                    all_subreddits
+                )
+                
+                if success:
+                    # Filter ranked subreddits to only include those we found
+                    relevant_subreddits = {}
+                    for name in ranked_subreddits:
+                        if name in all_subreddits:
+                            relevant_subreddits[name] = all_subreddits[name]
+                    
+                    discovery_data["relevant_subreddits"] = relevant_subreddits
             
             # Update campaign with results
             campaign.selected_document_ids = request.document_ids
@@ -141,7 +168,7 @@ class CampaignService:
             
             return True, f"Discovered {len(campaign.target_subreddits)} relevant subreddits", {
                 "subreddits": campaign.target_subreddits,
-                "topics": discovery_data.get("topics", []),
+                "topics": topics,
                 "total_found": len(discovery_data.get("relevant_subreddits", {}))
             }
             
@@ -171,8 +198,13 @@ class CampaignService:
                 campaign.selected_document_ids
             )
             
-            # Get topics (this would need to be stored from subreddit discovery)
-            topics = ["general"]  # Placeholder - should get from stored data
+            # Extract topics for search
+            success, message, topics = await self.llm_service.extract_topics_from_content(
+                campaign_context
+            )
+            
+            if not success:
+                topics = ["general"]  # Fallback
             
             # Discover posts using Reddit service
             success, message, posts = await self.reddit_service.discover_posts(
@@ -186,12 +218,15 @@ class CampaignService:
             if not success:
                 return False, message, None
             
-            # Analyze posts for relevance
+            # Analyze posts for relevance using LLM service
             target_posts = []
             for post in posts:
                 try:
-                    success, _, analysis = await self.reddit_service.analyze_post_relevance(
-                        post, campaign_context, campaign.organization_id
+                    success, _, analysis = await self.llm_service.analyze_post_relevance(
+                        post_title=post.get("title", ""),
+                        post_content=post.get("selftext", ""),
+                        campaign_context=campaign_context,
+                        subreddit=post.get("search_subreddit", "")
                     )
                     
                     if success and analysis.get("should_respond") and analysis.get("relevance_score", 0) > 0.3:
@@ -268,19 +303,13 @@ class CampaignService:
                     self.logger.info(f"Skipping post by {target_post.author} - already responded")
                     continue
                 
-                # Generate response using Reddit service
-                post_data = {
-                    "id": target_post.reddit_post_id,
-                    "title": target_post.title,
-                    "selftext": target_post.content,
-                    "search_subreddit": target_post.subreddit
-                }
-                
-                success, _, response_data = await self.reddit_service.generate_response(
-                    post=post_data,
+                # Generate response using LLM service
+                success, _, response_data = await self.llm_service.generate_reddit_response(
+                    post_title=target_post.title,
+                    post_content=target_post.content,
                     campaign_context=campaign_context,
                     tone=(request.tone or campaign.response_tone).value,
-                    organization_id=campaign.organization_id
+                    subreddit=target_post.subreddit
                 )
                 
                 if success and response_data:

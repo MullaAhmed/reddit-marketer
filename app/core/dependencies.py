@@ -1,5 +1,5 @@
 """
-FastAPI dependencies.
+FastAPI dependencies - Updated to include LLM service.
 """
 
 from typing import Annotated
