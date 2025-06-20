@@ -1,5 +1,5 @@
 """
-Campaign orchestration service - Updated to use centralized LLM service.
+Campaign orchestration service - Updated to use analytics service.
 """
 
 import logging
@@ -26,13 +26,18 @@ class CampaignService:
     document processing, Reddit operations, and LLM services.
     """
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(
+        self,
+        campaign_manager: CampaignManager,
+        document_service: DocumentService,
+        reddit_service: RedditService,
+        llm_service: LLMService
+    ):
         """Initialize the campaign service."""
-        self.data_dir = data_dir
-        self.campaign_manager = CampaignManager(data_dir)
-        self.document_service = DocumentService(data_dir)
-        self.reddit_service = RedditService(data_dir)
-        self.llm_service = LLMService()
+        self.campaign_manager = campaign_manager
+        self.document_service = document_service
+        self.reddit_service = reddit_service
+        self.llm_service = llm_service
         self.logger = logger
     
     async def cleanup(self):
@@ -114,7 +119,7 @@ class CampaignService:
                 return False, "Campaign not found", None
             
             # Get documents content
-            campaign_context = await self._get_campaign_context(
+            campaign_context = await self._get_relevant_campaign_context(
                 campaign.organization_id, 
                 request.document_ids
             )
@@ -199,7 +204,7 @@ class CampaignService:
                 return False, "Campaign not found", None
             
             # Get campaign context
-            campaign_context = await self._get_campaign_context(
+            campaign_context = await self._get_relevant_campaign_context(
                 campaign.organization_id, 
                 campaign.selected_document_ids
             )
@@ -210,7 +215,12 @@ class CampaignService:
             )
             
             if not success:
-                topics = ["general"]  # Fallback
+                topics = [campaign.name]
+                if campaign.description:
+                    topics.append(campaign.description)
+                topics = [t for t in topics if t] # Ensure no empty strings
+                if not topics: # Fallback if name/description are also empty
+                    topics = ["general"]
             
             # Discover posts using Reddit service
             success, message, posts = await self.reddit_service.discover_posts(
@@ -256,7 +266,7 @@ class CampaignService:
                     self.logger.warning(f"Error analyzing post {post.get('id')}: {str(e)}")
             
             # Update campaign
-            campaign.target_posts = target_posts
+            campaign.target_posts = {post.id: post for post in target_posts}
             campaign.status = CampaignStatus.POSTS_FOUND
             
             if not self._update_campaign(campaign):
@@ -267,7 +277,7 @@ class CampaignService:
             return True, f"Found {len(target_posts)} relevant posts", {
                 "posts_found": len(target_posts),
                 "subreddits_searched": len(request.subreddits),
-                "posts": [post.model_dump() for post in target_posts[:10]]
+                "posts": [post.model_dump() for post in target_posts]
             }
             
         except Exception as e:
@@ -291,7 +301,7 @@ class CampaignService:
                 return False, "Campaign not found", None
             
             # Get campaign context
-            campaign_context = await self._get_campaign_context(
+            campaign_context = await self._get_relevant_campaign_context(
                 campaign.organization_id, 
                 campaign.selected_document_ids
             )
@@ -330,7 +340,7 @@ class CampaignService:
                     planned_responses.append(planned_response)
             
             # Update campaign
-            campaign.planned_responses = planned_responses
+            campaign.planned_responses = {resp.id: resp for resp in planned_responses}
             campaign.status = CampaignStatus.RESPONSES_PLANNED
             
             if not self._update_campaign(campaign):
@@ -397,7 +407,8 @@ class CampaignService:
                 posted_responses.append(posted_response)
             
             # Update campaign
-            campaign.posted_responses.extend(posted_responses)
+            for resp in posted_responses:
+                campaign.posted_responses[resp.id] = resp
             campaign.status = CampaignStatus.RESPONSES_POSTED
             
             if not self._update_campaign(campaign):
@@ -421,35 +432,29 @@ class CampaignService:
     # HELPER METHODS
     # ========================================
     
-    async def _get_campaign_context(
+    async def _get_relevant_campaign_context(
         self, 
         organization_id: str, 
         document_ids: List[str]
     ) -> str:
         """Get combined context from campaign documents."""
         try:
-            return await self.document_service.get_campaign_context(organization_id, document_ids)
+            return await self.document_service.get_relevant_campaign_context(organization_id, document_ids)
         except Exception as e:
             self.logger.error(f"Error getting campaign context: {str(e)}")
             return ""
     
     def _find_target_post(self, campaign: Campaign, target_post_id: str) -> Optional[TargetPost]:
         """Find a target post by ID."""
-        for post in campaign.target_posts:
-            if post.id == target_post_id:
-                return post
-        return None
+        return campaign.target_posts.get(target_post_id)
     
     def _find_planned_response(self, campaign: Campaign, planned_response_id: str) -> Optional[PlannedResponse]:
         """Find a planned response by ID."""
-        for response in campaign.planned_responses:
-            if response.id == planned_response_id:
-                return response
-        return None
+        return campaign.planned_responses.get(planned_response_id)
     
     def _already_responded_to_author(self, campaign: Campaign, author: str) -> bool:
         """Check if we already responded to this author."""
-        for posted_response in campaign.posted_responses:
+        for posted_response in campaign.posted_responses.values():
             target_post = self._find_target_post(campaign, posted_response.target_post_id)
             if target_post and target_post.author == author:
                 return True

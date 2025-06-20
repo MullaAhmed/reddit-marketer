@@ -13,6 +13,8 @@ import asyncpraw
 from asyncpraw.models import Comment, Submission
 from asyncpraw.exceptions import RedditAPIException
 
+from app.core.settings import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,13 +28,7 @@ class RedditClient:
         client_id: str,
         client_secret: str,
         username: str = None,
-        password: str = None,
-        user_agent: str = None,
-        rate_limit_requests: int = 30,
-        rate_limit_period: int = 60,
-        max_retries: int = 3,
-        retry_base_delay: float = 2.0,
-        data_dir: str = "data"
+        password: str = None
     ):
         """Initialize the Reddit client."""
         self.client_id = client_id
@@ -40,21 +36,19 @@ class RedditClient:
         self.username = username
         self.password = password
         
-        self.user_agent = user_agent or (
-            f"python:reddit-marketing-agent:v2.0 (by /u/{username or 'anonymous'})"
-        )
+        self.user_agent = f"python:reddit-marketing-agent:v2.0 (by /u/{username or 'anonymous'})"
         
         # Rate limiting configuration
-        self.rate_limit_requests = rate_limit_requests
-        self.rate_limit_period = rate_limit_period
-        self.max_retries = max_retries
-        self.retry_base_delay = retry_base_delay
+        self.rate_limit_requests = 30
+        self.rate_limit_period = 60
+        self.max_retries = 3
+        self.retry_base_delay = 2.0
         
         # Track request timestamps for rate limiting
         self.request_timestamps = []
         
         # Reddit instance
-        self.reddit = None
+        self._reddit_instance = None
         self.logger = logger
     
     async def __aenter__(self):
@@ -68,16 +62,16 @@ class RedditClient:
     
     async def cleanup(self):
         """Clean up Reddit connection."""
-        if self.reddit:
-            await self.reddit.close()
-            self.reddit = None
+        if self._reddit_instance:
+            await self._reddit_instance.close()
+            self._reddit_instance = None
             self.logger.info("Closed Reddit API client")
     
     async def _initialize_reddit(self):
         """Initialize the Reddit API client."""
-        if self.reddit is None:
+        if self._reddit_instance is None:
             if self.username and self.password:
-                self.reddit = asyncpraw.Reddit(
+                self._reddit_instance = asyncpraw.Reddit(
                     client_id=self.client_id,
                     client_secret=self.client_secret,
                     username=self.username,
@@ -86,7 +80,7 @@ class RedditClient:
                 )
                 self.logger.info(f"Initialized Reddit API client with user: {self.username}")
             else:
-                self.reddit = asyncpraw.Reddit(
+                self._reddit_instance = asyncpraw.Reddit(
                     client_id=self.client_id,
                     client_secret=self.client_secret,
                     user_agent=self.user_agent
@@ -223,7 +217,7 @@ class RedditClient:
             results = []
             
             subreddit_obj = await self._execute_with_retry(
-                lambda: self.reddit.subreddit(subreddit)
+                lambda: self._reddit_instance.subreddit(subreddit)
             )
             
             search_results = subreddit_obj.search(
@@ -259,6 +253,42 @@ class RedditClient:
             self.logger.error(f"Error searching for '{query}' in r/{subreddit}: {str(e)}")
             raise
     
+    async def search_subreddits(self, query: str, limit: int = 25) -> Dict[str, Dict[str, Any]]:
+        """Search for subreddits by name or topic."""
+        await self._initialize_reddit()
+        results = {}
+        try:
+            search_generator = self._reddit_instance.subreddits.search(query, limit=limit)
+            async for subreddit in search_generator:
+                results[subreddit.display_name] = {
+                    "about": subreddit.public_description or subreddit.description,
+                    "subscribers": subreddit.subscribers
+                }
+            return results
+        except Exception as e:
+            self.logger.error(f"Error searching subreddits for '{query}': {str(e)}")
+            raise
+    
+    async def get_subreddit_info(self, subreddit_name: str) -> Dict[str, Any]:
+        """Get information about a specific subreddit."""
+        await self._initialize_reddit()
+        try:
+            subreddit = await self._execute_with_retry(
+                lambda: self._reddit_instance.subreddit(subreddit_name)
+            )
+            info = await self._execute_with_retry(lambda: subreddit.info())
+            return {
+                "name": info.display_name,
+                "subscribers": info.subscribers,
+                "description": info.public_description or info.description,
+                "created_utc": info.created_utc,
+                "over18": info.over18,
+                "url": info.url
+            }
+        except Exception as e:
+            self.logger.error(f"Error getting info for r/{subreddit_name}: {str(e)}")
+            raise
+    
     # ========================================
     # POSTING AND INTERACTION
     # ========================================
@@ -280,7 +310,7 @@ class RedditClient:
                 post_id = post_id[3:]
             
             submission = await self._execute_with_retry(
-                lambda: self.reddit.submission(id=post_id)
+                lambda: self._reddit_instance.submission(id=post_id)
             )
             
             comment = await self._execute_with_retry(
@@ -316,7 +346,7 @@ class RedditClient:
                 comment_id = comment_id[3:]
             
             comment = await self._execute_with_retry(
-                lambda: self.reddit.comment(id=comment_id)
+                lambda: self._reddit_instance.comment(id=comment_id)
             )
             
             reply = await self._execute_with_retry(

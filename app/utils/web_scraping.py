@@ -1,5 +1,5 @@
 """
-Web scraping service.
+Web scraping utility functions.
 """
 
 import requests
@@ -8,19 +8,19 @@ from bs4 import BeautifulSoup
 from firecrawl import FirecrawlApp
 from typing import Optional
 
-from app.core.settings_config import settings
+from app.core.settings import settings
 from app.utils.text_processing import clean_text
 
 logger = logging.getLogger(__name__)
 
 
-class WebScraperService:
+class WebScrapingUtil:
     """
-    Service for web scraping operations.
+    Utility class for web scraping operations.
     """
     
     def __init__(self):
-        """Initialize the web scraper service."""
+        """Initialize the web scraper utility."""
         self.logger = logger
     
     def scrape_with_firecrawl(self, url: str) -> Optional[str]:
@@ -119,3 +119,22 @@ class WebScraperService:
             return result
         else:
             raise ValueError(f"Unsupported scraping method: {method}")
+
+
+# Convenience functions for direct usage
+def scrape_url_with_firecrawl(url: str) -> Optional[str]:
+    """Convenience function to scrape URL with Firecrawl."""
+    scraper = WebScrapingUtil()
+    return scraper.scrape_with_firecrawl(url)
+
+
+def scrape_url_with_requests(url: str, proxies: Optional[dict] = None) -> Optional[str]:
+    """Convenience function to scrape URL with requests."""
+    scraper = WebScrapingUtil()
+    return scraper.scrape_with_requests(url, proxies)
+
+
+def scrape_url(url: str, method: str = "auto", proxies: Optional[dict] = None) -> Optional[str]:
+    """Convenience function to scrape URL with specified method."""
+    scraper = WebScrapingUtil()
+    return scraper.scrape_url(url, method, proxies)

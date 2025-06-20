@@ -17,10 +17,9 @@ class CampaignManager:
     Manager for campaign storage and retrieval.
     """
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, json_storage: JsonStorage):
         """Initialize campaign manager."""
-        self.data_dir = data_dir
-        self.json_storage = JsonStorage(data_dir)
+        self.json_storage = json_storage
         self.logger = logger
         
         # Initialize JSON files
@@ -129,7 +128,7 @@ class CampaignManager:
                     matching_campaigns.append(Campaign(**camp_data))
                     continue
             
-            return matching_campaigns[:limit]
+            return matching_campaigns
             
         except Exception as e:
             self.logger.error(f"Error searching campaigns: {str(e)}")

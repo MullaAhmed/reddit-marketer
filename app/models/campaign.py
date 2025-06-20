@@ -140,13 +140,13 @@ class Campaign(BaseModel):
     target_subreddits: List[str] = Field(default_factory=list)
     
     # Found posts and comments
-    target_posts: List[TargetPost] = Field(default_factory=list)
+    target_posts: Dict[str, TargetPost] = Field(default_factory=dict)
     
     # Planned responses
-    planned_responses: List[PlannedResponse] = Field(default_factory=list)
+    planned_responses: Dict[str, PlannedResponse] = Field(default_factory=dict)
     
     # Posted responses
-    posted_responses: List[PostedResponse] = Field(default_factory=list)
+    posted_responses: Dict[str, PostedResponse] = Field(default_factory=dict)
     
     class Config:
         json_encoders = {

@@ -9,6 +9,7 @@ A comprehensive Reddit marketing automation system that helps organizations enga
 - **AI-Powered Response Generation**: Generate contextual, helpful responses based on your content
 - **Automated Posting**: Execute approved responses automatically
 - **Campaign Management**: Track and manage multiple marketing campaigns
+- **Analytics & Reporting**: Comprehensive analytics for campaign performance
 - **Response Tracking**: Monitor posted responses and avoid duplicate interactions
 
 ## 🏗️ Architecture
@@ -18,7 +19,7 @@ A comprehensive Reddit marketing automation system that helps organizations enga
 app/
 ├── main.py                           # Single application entry point
 ├── core/                            # Core application functionality
-│   ├── config.py                    # Centralized configuration
+│   ├── settings.py                  # Centralized configuration
 │   ├── dependencies.py              # FastAPI dependencies
 │   └── middleware.py                # Application middleware
 ├── api/                             # Unified API layer
@@ -27,13 +28,14 @@ app/
 │       ├── campaigns.py             # Campaign management endpoints
 │       ├── documents.py             # Document management endpoints
 │       ├── subreddits.py           # Subreddit discovery endpoints
+│       ├── analytics.py            # Analytics endpoints
 │       └── health.py               # Health check endpoints
 ├── services/                        # Business logic layer
 │   ├── campaign_service.py          # Campaign orchestration
 │   ├── document_service.py          # Document processing (RAG)
 │   ├── reddit_service.py            # Reddit operations
 │   ├── llm_service.py              # LLM interactions
-│   └── web_scraper.py              # Web scraping
+│   └── analytics_service.py        # Analytics and reporting
 ├── models/                          # Data models
 │   ├── campaign.py                  # Campaign-related models
 │   ├── document.py                  # Document-related models
@@ -46,14 +48,16 @@ app/
 ├── managers/                        # Data management layer
 │   ├── campaign_manager.py          # Campaign storage management
 │   ├── document_manager.py          # Document metadata management
-│   └── embeddings_manager.py        # Embeddings management
+│   ├── embeddings_manager.py        # Embeddings management
+│   └── analytics_manager.py         # Analytics data management
 ├── storage/                         # Storage layer
 │   ├── vector_storage.py            # Vector database operations
 │   └── json_storage.py             # JSON file storage
 ├── utils/                           # Utility functions
-│   ├── text_processing.py          # Text utilities
-│   ├── file_utils.py               # File operations
-│   └── validation.py               # Data validation
+│   ├── text_processing.py          # Text processing utilities
+│   ├── file_utils.py               # File management utilities
+│   ├── validation.py               # Data validation utilities
+│   └── web_scraping.py             # Web scraping utilities
 ```
 
 ### Key Design Principles
@@ -61,6 +65,7 @@ app/
 - **Unified Services**: Centralized document processing and Reddit operations
 - **Modular Architecture**: Easy to extend and maintain
 - **Clean Dependencies**: Minimal coupling between components
+- **Consistent Naming**: All utility files follow `*_util.py` pattern for consistency
 
 ## 📋 Workflow
 
@@ -124,6 +129,12 @@ execution_request = ResponseExecutionRequest(
 - `POST /api/v1/documents/query` - Query documents
 - `GET /api/v1/documents/organizations/{id}` - Get organization documents
 
+### Analytics & Reporting
+- `GET /api/v1/analytics/campaigns/{id}/engagement` - Campaign engagement report
+- `GET /api/v1/analytics/organizations/{id}/performance` - Organization performance
+- `GET /api/v1/analytics/organizations/{id}/quick-stats` - Quick stats overview
+- `GET /api/v1/analytics/platform/overview` - Platform-wide metrics
+
 ### Subreddit Discovery
 - `POST /api/v1/subreddits/discover` - Discover subreddits
 - `POST /api/v1/subreddits/extract-topics` - Extract topics
@@ -182,6 +193,25 @@ Campaigns progress through these states:
 5. `RESPONSES_PLANNED` - Responses generated
 6. `RESPONSES_POSTED` - Responses posted to Reddit
 7. `COMPLETED` - Campaign finished
+
+## 📈 Analytics & Reporting
+
+### Campaign Analytics
+- **Engagement Reports**: Detailed engagement metrics per campaign
+- **Performance Tracking**: Success rates, response effectiveness
+- **Subreddit Analysis**: Performance breakdown by subreddit
+- **Trend Analysis**: Campaign performance over time
+
+### Organization Analytics
+- **Comprehensive Reports**: Full organization performance overview
+- **Document Statistics**: Document usage and effectiveness
+- **Quick Stats**: At-a-glance performance indicators
+- **Platform Insights**: AI-generated insights and recommendations
+
+### Platform Analytics
+- **Global Metrics**: Platform-wide performance indicators
+- **Cross-Organization Trends**: Comparative analysis
+- **Usage Statistics**: Platform adoption and activity metrics
 
 ## 🛠️ Configuration
 
@@ -277,6 +307,19 @@ response = requests.post(
 )
 ```
 
+### Analytics Usage
+```python
+# Get campaign engagement report
+engagement_report = requests.get(
+    f"http://localhost:8000/api/v1/analytics/campaigns/{campaign_id}/engagement"
+)
+
+# Get organization performance
+performance_report = requests.get(
+    f"http://localhost:8000/api/v1/analytics/organizations/{org_id}/performance"
+)
+```
+
 ## 🧠 AI & LLM Integration
 
 ### Supported Providers
@@ -313,6 +356,8 @@ The system tracks:
 - Error logs and debugging info
 - LLM usage and costs
 - Vector storage statistics
+- Subreddit effectiveness
+- Performance trends over time
 
 ## 📚 Documentation
 
@@ -345,6 +390,9 @@ curl -X POST "http://localhost:8000/api/v1/documents/ingest?organization_id=test
 curl -X POST "http://localhost:8000/api/v1/campaigns/?organization_id=test-org" \
   -H "Content-Type: application/json" \
   -d '{"name": "Test Campaign", "response_tone": "helpful"}'
+
+# Test analytics
+curl "http://localhost:8000/api/v1/analytics/platform/overview"
 ```
 
 ## 🤝 Contributing
@@ -382,6 +430,7 @@ For issues and questions:
 
 ## 🔄 Version History
 
+- **v2.1.0**: Added comprehensive analytics and reporting system
 - **v2.0.0**: Clean architecture with modular design
 - **v1.0.0**: Initial release with basic campaign functionality
 

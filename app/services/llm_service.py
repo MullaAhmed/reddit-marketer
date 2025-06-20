@@ -7,7 +7,7 @@ import logging
 from typing import Optional, Dict, Any, List, Tuple
 from pydantic import BaseModel
 
-from app.core.config import settings, OpenAIConfig, GoogleConfig, GroqConfig
+from app.core.settings import settings, OpenAIConfig, GoogleConfig, GroqConfig
 from app.clients.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
@@ -81,9 +81,9 @@ class LLMService:
     Centralized location for all AI operations.
     """
     
-    def __init__(self):
+    def __init__(self, llm_client: LLMClient):
         """Initialize the LLM service."""
-        self.llm_client = LLMClient()
+        self.llm_client = llm_client
         self.logger = logger
         self.prompts = PromptTemplates()
     
@@ -271,7 +271,7 @@ class LLMService:
             # Build subreddit list for prompt
             subreddit_list = []
             for name, info in subreddit_data.items():
-                subreddit_list.append(f"{name}: {info.get('about', '')[:100]}")
+                subreddit_list.append(f"{name}: {info.get('about', '')}")
             
             prompt = self.prompts.SUBREDDIT_RANKING.format(
                 content=content,
@@ -319,7 +319,7 @@ class LLMService:
             prompt = self.prompts.POST_RELEVANCE_ANALYSIS.format(
                 campaign_context=campaign_context,
                 post_title=post_title,
-                post_content=post_content[:500]  # Limit content length
+                post_content=post_content
             )
             
             success, message, response = await self._generate_completion_with_error_handling(

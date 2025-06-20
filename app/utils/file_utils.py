@@ -1,5 +1,5 @@
 """
-File utility functions.
+File management utility functions.
 """
 
 import os

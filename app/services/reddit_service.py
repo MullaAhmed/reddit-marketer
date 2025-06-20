@@ -3,7 +3,6 @@ Reddit operations service - Focused on Reddit API interactions only.
 """
 
 import asyncio
-import aiohttp
 import logging
 from typing import Dict, List, Any, Tuple, Optional
 
@@ -20,30 +19,21 @@ class RedditService:
     AI operations have been moved to LLMService for better separation of concerns.
     """
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(
+        self,
+        json_storage: JsonStorage,
+        reddit_client: RedditClient
+    ):
         """Initialize the Reddit service."""
-        self.data_dir = data_dir
-        self.json_storage = JsonStorage(data_dir)
+        self.json_storage = json_storage
+        self._reddit_client = reddit_client
         self.logger = logger
-        
-        # Reddit client will be initialized per operation
-        self._reddit_client = None
     
     async def cleanup(self):
         """Clean up resources."""
         if self._reddit_client:
             await self._reddit_client.cleanup()
             self._reddit_client = None
-    
-    def _get_reddit_client(self, credentials: Dict[str, str]) -> RedditClient:
-        """Get or create Reddit client with credentials."""
-        return RedditClient(
-            client_id=credentials["client_id"],
-            client_secret=credentials["client_secret"],
-            username=credentials.get("username"),
-            password=credentials.get("password"),
-            data_dir=self.data_dir
-        )
     
     # ========================================
     # SUBREDDIT DISCOVERY (Reddit API focused)
@@ -73,15 +63,11 @@ class RedditService:
             # Search for subreddits related to each topic
             all_subreddits = {}
        
-            headers = {"User-Agent": "Mozilla/5.0 Reddit Marketing Agent"}
-            
-            async with aiohttp.ClientSession() as session:
-                # Create coroutine list directly, no create_task
+            async with self._reddit_client: # Use the service's client as context manager
                 coroutines = [
-                    self._search_subreddits_by_topic(topic, session, headers)
+                    self._search_subreddits_by_topic(topic, self._reddit_client)
                     for topic in topics
                 ]
-
                 results = await asyncio.gather(*coroutines, return_exceptions=True)
 
                 for topic, result in zip(topics, results):
@@ -119,66 +105,27 @@ class RedditService:
     async def _search_subreddits_by_topic(
         self, 
         topic: str, 
-        session, 
-        headers: Dict[str, str]
+        reddit_client: RedditClient
     ) -> Dict[str, Dict[str, Any]]:
         """Search Reddit for subreddits related to a topic."""
-        url = f"https://www.reddit.com/search.json?q={topic}"
-        
         try:
-            async with session.get(url, headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    posts = data["data"]["children"]
-                    
-                    subreddit_dict = {}
-                    subreddit_names = set()
-                    
-                    # Collect unique subreddit names
-                    for post in posts:
-                        post_data = post["data"]
-                        subreddit_name = post_data["subreddit"].strip()
-                        subreddit_names.add(subreddit_name)
-                    
-                    # Get details for each subreddit
-                    for name in subreddit_names:
-                        try:
-                            details = await self._get_subreddit_details(name, session, headers)
-                            subreddit_dict[name] = details
-                        except Exception as e:
-                            self.logger.warning(f"Error getting details for r/{name}: {str(e)}")
-                    
-                    return subreddit_dict
-                else:
-                    return {}
+            # Assuming RedditClient has a search_subreddits method
+            search_results = await reddit_client.search_subreddits(topic)
+            subreddit_dict = {}
+            for subreddit_name, details in search_results.items():
+                try:
+                    # Use RedditClient's get_subreddit_info
+                    info = await reddit_client.get_subreddit_info(subreddit_name)
+                    subreddit_dict[subreddit_name] = {
+                        "about": info.get("description", ""),
+                        "subscribers": info.get("subscribers", 0)
+                    }
+                except Exception as e:
+                    self.logger.warning(f"Error getting details for r/{subreddit_name}: {str(e)}")
+            return subreddit_dict
         except Exception as e:
             self.logger.error(f"Error searching subreddits for topic '{topic}': {str(e)}")
             return {}
-    
-    async def _get_subreddit_details(
-        self, 
-        subreddit_name: str, 
-        session, 
-        headers: Dict[str, str]
-    ) -> Dict[str, Any]:
-        """Get details about a specific subreddit."""
-        url = f"https://www.reddit.com/r/{subreddit_name}/about.json"
-        
-        try:
-            async with session.get(url, headers=headers) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    about = data["data"].get("public_description", "") or data["data"].get("description", "")
-                    subscribers = data["data"].get("subscribers", 0)
-                    
-                    return {
-                        "about": about,
-                        "subscribers": subscribers
-                    }
-                else:
-                    return {"about": "", "subscribers": 0}
-        except Exception:
-            return {"about": "", "subscribers": 0}
     
     def _filter_subreddits_by_criteria(
         self, 
@@ -220,14 +167,14 @@ class RedditService:
             Tuple of (success, message, posts)
         """
         try:
-            reddit_client = self._get_reddit_client(reddit_credentials)
+            reddit_client = self._reddit_client
             
             all_posts = []
             
             async with reddit_client:
                 # Search each subreddit for each topic
                 for subreddit in subreddits:
-                    for topic in topics[:3]:  # Limit to top 3 topics
+                    for topic in topics:  # Removed slicing
                         try:
                             posts = await reddit_client.search_subreddit_posts(
                                 subreddit=subreddit,
@@ -279,7 +226,7 @@ class RedditService:
             Tuple of (success, message, posted_response_data)
         """
         try:
-            reddit_client = self._get_reddit_client(reddit_credentials)
+            reddit_client = self._reddit_client
             
             async with reddit_client:
                 if response_type == "post_comment":
@@ -301,21 +248,34 @@ class RedditService:
     
     async def get_subreddit_info(self, subreddit_name: str) -> Dict[str, Any]:
         """Get information about a specific subreddit."""
-        headers = {"User-Agent": "Mozilla/5.0 Reddit Marketing Agent"}
-        
-        async with aiohttp.ClientSession() as session:
-            try:
-                details = await self._get_subreddit_details(subreddit_name, session, headers)
-                return {
-                    "name": subreddit_name,
-                    "subscribers": details.get("subscribers", 0),
-                    "description": details.get("about", ""),
-                    "success": True
-                }
-            except Exception as e:
-                self.logger.error(f"Error getting subreddit info for r/{subreddit_name}: {str(e)}")
-                return {
-                    "name": subreddit_name,
-                    "error": str(e),
-                    "success": False
-                }
+        try:
+            info = await self._reddit_client.get_subreddit_info(subreddit_name)
+            return {
+                "name": subreddit_name,
+                "subscribers": info.get("subscribers", 0),
+                "description": info.get("description", ""),
+                "success": True
+            }
+        except Exception as e:
+            self.logger.error(f"Error getting subreddit info for r/{subreddit_name}: {str(e)}")
+            return {
+                "name": subreddit_name,
+                "error": str(e),
+                "success": False
+            }
+    
+    async def search_subreddits(self, query: str, limit: int = 25) -> Tuple[bool, str, List[Dict[str, Any]]]:
+        """Search for subreddits by name or topic using the Reddit client."""
+        try:
+            results = await self._reddit_client.search_subreddits(query, limit)
+            formatted_results = []
+            for name, info in results.items():
+                formatted_results.append({
+                    "name": name,
+                    "subscribers": info.get("subscribers", 0),
+                    "description": info.get("about", "")
+                })
+            return True, f"Found {len(formatted_results)} subreddits for '{query}'", formatted_results
+        except Exception as e:
+            self.logger.error(f"Error searching subreddits: {str(e)}")
+            return False, f"Error searching subreddits: {str(e)}", []

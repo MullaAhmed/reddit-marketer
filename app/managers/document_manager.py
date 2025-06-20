@@ -16,10 +16,9 @@ class DocumentManager:
     Manager for document metadata storage and retrieval.
     """
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, json_storage: JsonStorage):
         """Initialize document manager."""
-        self.data_dir = data_dir
-        self.json_storage = JsonStorage(data_dir)
+        self.json_storage = json_storage
         self.logger = logger
         
         # Initialize JSON files
@@ -165,7 +164,7 @@ class DocumentManager:
                         matching_docs.append(doc)
                         break
             
-            return matching_docs[:limit]
+            return matching_docs
             
         except Exception as e:
             self.logger.error(f"Error searching documents: {str(e)}")

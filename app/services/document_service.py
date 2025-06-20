@@ -23,11 +23,14 @@ class DocumentService:
     storage, and retrieval using RAG techniques.
     """
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(
+        self,
+        document_manager: DocumentManager,
+        vector_storage: VectorStorage
+    ):
         """Initialize the document service."""
-        self.data_dir = data_dir
-        self.document_manager = DocumentManager(data_dir)
-        self.vector_storage = VectorStorage(data_dir)
+        self.document_manager = document_manager
+        self.vector_storage = vector_storage
         self.logger = logger
     
     # ========================================
@@ -237,7 +240,7 @@ class DocumentService:
     # UTILITY METHODS
     # ========================================
     
-    async def get_campaign_context(
+    async def get_relevant_campaign_context(
         self, 
         organization_id: str, 
         document_ids: List[str]
@@ -295,3 +298,43 @@ class DocumentService:
         except Exception as e:
             self.logger.error(f"Error getting organization stats for {org_id}: {str(e)}")
             return {"error": str(e)}
+    
+    def delete_document(self, org_id: str, document_id: str) -> Tuple[bool, str]:
+        """Delete a document and its chunks."""
+        try:
+            # Delete from vector storage first
+            vector_delete_success = self.vector_storage.delete_document(org_id, document_id)
+            if not vector_delete_success:
+                return False, "Failed to delete document chunks from vector storage"
+
+            # Then delete metadata
+            metadata_delete_success = self.document_manager.delete_document(document_id)
+            if not metadata_delete_success:
+                return False, "Failed to delete document metadata"
+
+            # Update organization document count
+            organization = self.get_or_create_organization(org_id) # Re-fetch to update count
+            organization.documents_count = len(self.document_manager.get_documents_by_organization(org_id))
+            self.document_manager.save_organization(organization.model_dump())
+
+            self.logger.info(f"Deleted document {document_id} for org {org_id}")
+            return True, "Document deleted successfully"
+        except Exception as e:
+            self.logger.error(f"Error deleting document {document_id}: {str(e)}")
+            return False, f"Error deleting document: {str(e)}"
+    
+    def list_organizations(self) -> List[Organization]:
+        """List all organizations."""
+        try:
+            org_data_list = self.document_manager.list_organizations()
+            organizations = []
+            for org_data in org_data_list:
+                # Load existing documents for this org to get count
+                existing_docs = self.document_manager.get_documents_by_organization(org_data['id'])
+                org_data['documents'] = [Document(**doc) for doc in existing_docs]
+                org_data['documents_count'] = len(existing_docs)
+                organizations.append(Organization(**org_data))
+            return organizations
+        except Exception as e:
+            self.logger.error(f"Error listing organizations: {str(e)}")
+            return []

@@ -148,11 +148,10 @@ async def delete_document(
     """Delete a specific document."""
     org_id = validate_organization_id(organization_id)
     
-    # This would need to be implemented in the document service
-    raise HTTPException(
-        status_code=501, 
-        detail="Document deletion not yet implemented"
-    )
+    success, message = document_service.delete_document(org_id, document_id)
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    return {"success": True, "message": message}
 
 
 @router.get("/organizations", response_model=DocumentResponse)
@@ -161,10 +160,11 @@ async def list_organizations(
 ):
     """List all organizations."""
     try:
-        # This would need to be implemented in the document service
-        raise HTTPException(
-            status_code=501,
-            detail="Organization listing not yet implemented"
+        organizations = document_service.list_organizations()
+        return DocumentResponse(
+            success=True,
+            message=f"Found {len(organizations)} organizations",
+            data={"organizations": [org.model_dump() for org in organizations]}
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -4,6 +4,7 @@ Vector storage operations using Haystack.
 
 import logging
 from typing import List, Dict, Any, Optional
+from uuid import uuid4
 
 from haystack import Document
 from app.clients.storage_client import VectorStorageClient
@@ -17,10 +18,9 @@ class VectorStorage:
     Vector storage manager for document embeddings and retrieval.
     """
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, vector_storage_client: VectorStorageClient):
         """Initialize vector storage."""
-        self.data_dir = data_dir
-        self.storage_client = VectorStorageClient(data_dir)
+        self.storage_client = vector_storage_client
         self.logger = logger
     
     def store_document_chunks(
@@ -147,7 +147,8 @@ class VectorStorage:
         self,
         org_id: str,
         document_id: str,
-        store_type: str = "chroma"
+        store_type: str = "chroma",
+        query: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """
         Get all chunks for a specific document ID using direct ChromaDB get method.
@@ -156,51 +157,36 @@ class VectorStorage:
             org_id: Organization ID
             document_id: Document ID to retrieve chunks for
             store_type: Storage type
+            query: Optional query for relevance-based retrieval
             
         Returns:
             List of document chunks
         """
         try:
-            # Get the document store
-            document_store = self.storage_client.get_document_store(org_id, store_type)
-            
-            # First, try to get chunk IDs by querying for documents with this document_id
-            # We'll use a simple approach: get all documents and filter
-            all_documents = document_store.filter_documents()
-            
-            # Find all chunks for this document
             document_chunks = []
-            chunk_ids = []
-            
-            for doc in all_documents:
-                if doc.meta.get("document_id") == document_id:
-                    document_chunks.append(doc)
-                    if hasattr(doc, 'id') and doc.id:
-                        chunk_ids.append(doc.id)
-            
-            # If we found chunks, try to use the direct get method for better performance
-            if chunk_ids and hasattr(document_store, 'get'):
-                try:
-                    # Use ChromaDB's direct get method
-                    result = document_store.get(ids=chunk_ids)
-                    
-                    if result and "documents" in result and result["documents"]:
-                        # Reconstruct Document objects from ChromaDB result
-                        direct_chunks = []
-                        for i, (doc_content, metadata) in enumerate(zip(result["documents"], result["metadatas"])):
-                            doc = Document(
-                                id=chunk_ids[i] if i < len(chunk_ids) else f"chunk_{i}",
-                                content=doc_content,
-                                meta=metadata
-                            )
-                            direct_chunks.append(doc)
-                        
-                        document_chunks = direct_chunks
-                        self.logger.debug(f"Retrieved {len(document_chunks)} chunks using direct get method for document {document_id}")
-                    
-                except Exception as e:
-                    self.logger.warning(f"Direct get method failed, using filtered results: {e}")
-                    # Fall back to the filtered results we already have
+            if query:
+                # Use semantic search with document_id filter
+                retrieved_docs = self.storage_client.query_documents(
+                    org_id=org_id,
+                    query=query,
+                    top_k=10, # Retrieve more to ensure enough relevant chunks
+                    filters={"document_id": document_id},
+                    store_type=store_type
+                )
+                # Convert retrieved_docs (list of dicts) to Haystack Document objects
+                for doc_data in retrieved_docs:
+                    document_chunks.append(Document(
+                        id=doc_data.get('metadata', {}).get('chunk_id', str(uuid4())),
+                        content=doc_data.get('content', ''),
+                        meta=doc_data.get('metadata', {})
+                    ))
+            else:
+                # Fallback to filtering all documents if no query
+                document_store = self.storage_client.get_document_store(org_id, store_type)
+                all_documents = document_store.filter_documents()
+                for doc in all_documents:
+                    if doc.meta.get("document_id") == document_id:
+                        document_chunks.append(doc)
             
             # Sort chunks by chunk_index to maintain order
             document_chunks.sort(key=lambda doc: doc.meta.get("chunk_index", 0))

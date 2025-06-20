@@ -64,6 +64,8 @@ class Settings(BaseSettings):
     DEEP_SEEK_API_KEY: str = os.getenv("DEEP_SEEK_API_KEY", "")
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
     FIRECRAWL_API_KEY: str = os.getenv("FIRECRAWL_API_KEY", "")
+    REDDIT_CLIENT_ID: str = os.getenv("REDDIT_CLIENT_ID", "")
+    REDDIT_CLIENT_SECRET: str = os.getenv("REDDIT_CLIENT_SECRET", "")
     
     # Optional
     LANGCHAIN_PROJECT: Optional[str] = os.getenv("LANGCHAIN_PROJECT")

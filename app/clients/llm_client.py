@@ -12,7 +12,7 @@ from groq import AsyncGroq
 from openai import AsyncOpenAI
 from langsmith import traceable
 
-from app.core.config import settings, OpenAIConfig, GoogleConfig, GroqConfig
+from app.core.settings import settings, OpenAIConfig, GoogleConfig, GroqConfig
 
 logger = logging.getLogger(__name__)
 

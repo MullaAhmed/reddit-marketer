@@ -16,10 +16,9 @@ class EmbeddingsManager:
     Manager for embeddings operations and vector storage management.
     """
     
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, vector_storage_client: VectorStorageClient):
         """Initialize embeddings manager."""
-        self.data_dir = data_dir
-        self.storage_client = VectorStorageClient(data_dir)
+        self.storage_client = vector_storage_client
         self.logger = logger
     
     # ========================================
@@ -121,98 +120,6 @@ class EmbeddingsManager:
             return self.storage_client.get_storage_stats(org_id)
         except Exception as e:
             self.logger.error(f"Error getting storage stats for org {org_id}: {str(e)}")
-            return {"error": str(e)}
-    
-    def optimize_storage(self, org_id: str) -> Dict[str, Any]:
-        """Optimize vector storage for organization."""
-        try:
-            # This would implement storage optimization strategies
-            # For now, just return current stats
-            stats = self.get_storage_stats(org_id)
-            
-            return {
-                "organization_id": org_id,
-                "optimization_performed": False,
-                "message": "Storage optimization not yet implemented",
-                "current_stats": stats
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error optimizing storage for org {org_id}: {str(e)}")
-            return {"error": str(e)}
-    
-    def backup_embeddings(self, org_id: str, backup_path: str = None) -> bool:
-        """Backup embeddings for organization."""
-        try:
-            # This would implement embedding backup functionality
-            self.logger.info(f"Backup embeddings for org {org_id} (not implemented)")
-            return True
-        except Exception as e:
-            self.logger.error(f"Error backing up embeddings for org {org_id}: {str(e)}")
-            return False
-    
-    def restore_embeddings(self, org_id: str, backup_path: str) -> bool:
-        """Restore embeddings for organization."""
-        try:
-            # This would implement embedding restore functionality
-            self.logger.info(f"Restore embeddings for org {org_id} from {backup_path} (not implemented)")
-            return True
-        except Exception as e:
-            self.logger.error(f"Error restoring embeddings for org {org_id}: {str(e)}")
-            return False
-    
-    # ========================================
-    # EMBEDDING ANALYSIS
-    # ========================================
-    
-    def analyze_embedding_distribution(self, org_id: str) -> Dict[str, Any]:
-        """Analyze the distribution of embeddings for an organization."""
-        try:
-            # This would analyze embedding clusters, outliers, etc.
-            stats = self.get_storage_stats(org_id)
-            
-            return {
-                "organization_id": org_id,
-                "analysis_performed": False,
-                "message": "Embedding analysis not yet implemented",
-                "storage_stats": stats
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error analyzing embeddings for org {org_id}: {str(e)}")
-            return {"error": str(e)}
-    
-    def find_embedding_clusters(
-        self, 
-        org_id: str, 
-        num_clusters: int = 5
-    ) -> Dict[str, Any]:
-        """Find clusters in organization's embeddings."""
-        try:
-            # This would implement clustering analysis
-            return {
-                "organization_id": org_id,
-                "num_clusters": num_clusters,
-                "clustering_performed": False,
-                "message": "Embedding clustering not yet implemented"
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error clustering embeddings for org {org_id}: {str(e)}")
-            return {"error": str(e)}
-    
-    def detect_embedding_outliers(self, org_id: str) -> Dict[str, Any]:
-        """Detect outlier embeddings for an organization."""
-        try:
-            # This would implement outlier detection
-            return {
-                "organization_id": org_id,
-                "outlier_detection_performed": False,
-                "message": "Outlier detection not yet implemented"
-            }
-            
-        except Exception as e:
-            self.logger.error(f"Error detecting outliers for org {org_id}: {str(e)}")
             return {"error": str(e)}
     
     # ========================================

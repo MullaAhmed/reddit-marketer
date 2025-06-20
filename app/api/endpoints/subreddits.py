@@ -66,15 +66,16 @@ async def search_subreddits(
 ):
     """Search for subreddits by name or topic."""
     try:
-        # This would implement direct subreddit search
-        # For now, return a placeholder response
+        success, message, results = await reddit_service.search_subreddits(query, limit)
+        if not success:
+            raise HTTPException(status_code=400, detail=message)
         return {
             "success": True,
-            "message": f"Search for '{query}' completed",
+            "message": message,
             "data": {
                 "query": query,
-                "results": [],
-                "total": 0
+                "results": results,
+                "total": len(results)
             }
         }
     except Exception as e:
@@ -88,17 +89,13 @@ async def get_subreddit_info(
 ):
     """Get information about a specific subreddit."""
     try:
-        # This would implement subreddit info retrieval
-        # For now, return a placeholder response
+        info = await reddit_service.get_subreddit_info(subreddit_name)
+        if not info.get("success", True):
+            raise HTTPException(status_code=400, detail=info.get("error", "Unknown error"))
         return {
             "success": True,
             "message": f"Information for r/{subreddit_name}",
-            "data": {
-                "name": subreddit_name,
-                "subscribers": 0,
-                "description": "",
-                "rules": []
-            }
+            "data": info
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -4,10 +4,11 @@ Main API router that combines all endpoint routers.
 
 from fastapi import APIRouter
 
-from api.endpoints.campaigns import router as campaigns_router
-from api.endpoints.documents import router as documents_router
-from api.endpoints.subreddits import router as subreddits_router
-from api.endpoints.health import router as health_router
+from app.api.endpoints.campaigns import router as campaigns_router
+from app.api.endpoints.documents import router as documents_router
+from app.api.endpoints.subreddits import router as subreddits_router
+from app.api.endpoints.health import router as health_router
+from app.api.endpoints.analytics import router as analytics_router
 
 api_router = APIRouter()
 
@@ -34,4 +35,10 @@ api_router.include_router(
     health_router,
     prefix="/health",
     tags=["Health"]
+)
+
+api_router.include_router(
+    analytics_router,
+    prefix="/analytics",
+    tags=["Analytics"]
 )

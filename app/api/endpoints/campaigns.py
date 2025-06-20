@@ -176,8 +176,8 @@ async def get_campaign_status(
         "posts_found": len(campaign.target_posts),
         "responses_planned": len(campaign.planned_responses),
         "responses_posted": len(campaign.posted_responses),
-        "successful_posts": len([r for r in campaign.posted_responses if r.posting_successful]),
-        "failed_posts": len([r for r in campaign.posted_responses if not r.posting_successful])
+        "successful_posts": len([r for r in campaign.posted_responses.values() if r.posting_successful]),
+        "failed_posts": len([r for r in campaign.posted_responses.values() if not r.posting_successful])
     }
     
     return CampaignResponse(
