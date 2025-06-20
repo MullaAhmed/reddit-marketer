@@ -10,7 +10,7 @@ A comprehensive Reddit marketing automation system that helps organizations enga
 - **Automated Posting**: Execute approved responses automatically
 - **Campaign Management**: Track and manage multiple marketing campaigns
 - **Response Tracking**: Monitor posted responses and avoid duplicate interactions
-- **Comprehensive Analytics**: Track engagement metrics and campaign performance
+- **Comprehensive Analytics**: Track engagement metrics and campaign performance with detailed insights
 
 ## 🏗️ Architecture
 
@@ -139,6 +139,7 @@ execution_request = ResponseExecutionRequest(
 
 ### Statistics & Analytics
 - `POST /api/v1/stats/collect-engagement` - Collect engagement metrics
+- `POST /api/v1/stats/collect-campaign-engagement/{id}` - Collect campaign engagement
 - `GET /api/v1/stats/campaign/{id}` - Campaign analytics
 - `GET /api/v1/stats/organization/{id}` - Organization analytics
 - `GET /api/v1/stats/subreddit/{name}` - Subreddit performance
@@ -212,24 +213,35 @@ The system provides comprehensive analytics including:
 - Engagement metrics (scores, replies)
 - Subreddit performance breakdown
 - Timeline analysis
+- ROI tracking
 
 ### Organization Analytics
 - Cross-campaign performance metrics
 - Trending subreddits identification
 - Success rate analysis
-- ROI insights
+- Resource utilization insights
+- Comparative performance analysis
 
 ### Engagement Tracking
 - Real-time engagement collection
 - Score history tracking
 - Reply monitoring
 - Sentiment analysis
+- Engagement trend analysis
 
 ### Performance Reports
 - Automated report generation
 - Actionable recommendations
 - Trend identification
 - Comparative analysis
+- Export capabilities
+
+### Advanced Analytics Features
+- **Trending Subreddits**: Identify high-performing communities based on engagement metrics
+- **Engagement Insights**: Deep dive into response performance with sentiment analysis
+- **Campaign Reports**: Comprehensive reports with recommendations for optimization
+- **Organization Reports**: Cross-campaign analysis with strategic insights
+- **Data Cleanup**: Automated cleanup of old analytics data to maintain performance
 
 ## 🛠️ Configuration
 
@@ -340,6 +352,11 @@ response = requests.post(
 trending = requests.get(
     "http://localhost:8000/api/v1/stats/trending-subreddits?organization_id=org-1"
 )
+
+# Generate comprehensive report
+report = requests.get(
+    f"http://localhost:8000/api/v1/stats/campaign-report/{campaign_id}"
+)
 ```
 
 ## 🧠 AI & LLM Integration
@@ -380,6 +397,8 @@ The system tracks:
 - Vector storage statistics
 - Real-time engagement data
 - Performance trends
+- Subreddit performance analytics
+- User interaction patterns
 
 ## 📚 Documentation
 
@@ -415,6 +434,11 @@ curl -X POST "http://localhost:8000/api/v1/campaigns/?organization_id=test-org" 
 
 # Test analytics
 curl "http://localhost:8000/api/v1/stats/trending-subreddits?limit=5"
+
+# Test engagement collection
+curl -X POST "http://localhost:8000/api/v1/stats/collect-engagement" \
+  -H "Content-Type: application/json" \
+  -d '{"reddit_comment_ids": ["abc123"], "reddit_credentials": {...}}'
 ```
 
 ## 🤝 Contributing
