@@ -6,7 +6,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone, timedelta
 
-from app.repositories.json_repository import JsonRepository
+from app.storage.json_storage import JsonStorage
 from app.managers.campaign_manager import CampaignManager
 from app.managers.document_manager import DocumentManager
 
@@ -21,15 +21,15 @@ class StatsManager:
     def __init__(self, data_dir: str = "data"):
         """Initialize stats manager."""
         self.data_dir = data_dir
-        self.json_repository = JsonRepository(data_dir)
+        self.json_storage = JsonStorage(data_dir)
         self.campaign_manager = CampaignManager(data_dir)
         self.document_manager = DocumentManager(data_dir)
         self.logger = logger
         
         # Initialize JSON files for stats tracking
-        self.json_repository.init_file("engagement_stats.json", [])
-        self.json_repository.init_file("response_analytics.json", [])
-        self.json_repository.init_file("subreddit_performance.json", [])
+        self.json_storage.init_file("engagement_stats.json", [])
+        self.json_storage.init_file("response_analytics.json", [])
+        self.json_storage.init_file("subreddit_performance.json", [])
     
     # ========================================
     # ENGAGEMENT TRACKING
@@ -57,7 +57,7 @@ class StatsManager:
                 "last_updated": datetime.now(timezone.utc).isoformat()
             }
             
-            return self.json_repository.update_item("engagement_stats.json", engagement_record)
+            return self.json_storage.update_item("engagement_stats.json", engagement_record)
             
         except Exception as e:
             self.logger.error(f"Error tracking response engagement: {str(e)}")
@@ -72,7 +72,7 @@ class StatsManager:
         """Update engagement metrics for a response."""
         try:
             # Find the engagement record
-            engagement_records = self.json_repository.load_data("engagement_stats.json")
+            engagement_records = self.json_storage.load_data("engagement_stats.json")
             
             for record in engagement_records:
                 if record.get("reddit_comment_id") == reddit_comment_id:
@@ -95,7 +95,7 @@ class StatsManager:
                     record["last_updated"] = datetime.now(timezone.utc).isoformat()
                     
                     # Save updated data
-                    return self.json_repository.save_data("engagement_stats.json", engagement_records)
+                    return self.json_storage.save_data("engagement_stats.json", engagement_records)
             
             return False  # Record not found
             
@@ -106,7 +106,7 @@ class StatsManager:
     def get_response_engagement(self, reddit_comment_id: str) -> Optional[Dict[str, Any]]:
         """Get engagement data for a specific response."""
         try:
-            engagement_records = self.json_repository.load_data("engagement_stats.json")
+            engagement_records = self.json_storage.load_data("engagement_stats.json")
             
             for record in engagement_records:
                 if record.get("reddit_comment_id") == reddit_comment_id:
@@ -130,7 +130,7 @@ class StatsManager:
                 return {"error": "Campaign not found"}
             
             # Get engagement data for all responses in this campaign
-            engagement_records = self.json_repository.filter_items(
+            engagement_records = self.json_storage.filter_items(
                 "engagement_stats.json",
                 {"campaign_id": campaign_id}
             )
@@ -284,7 +284,7 @@ class StatsManager:
                 "tracked_at": datetime.now(timezone.utc).isoformat()
             }
             
-            return self.json_repository.update_item("subreddit_performance.json", performance_record)
+            return self.json_storage.update_item("subreddit_performance.json", performance_record)
             
         except Exception as e:
             self.logger.error(f"Error tracking subreddit performance: {str(e)}")
@@ -293,7 +293,7 @@ class StatsManager:
     def get_subreddit_analytics(self, subreddit: str) -> Dict[str, Any]:
         """Get analytics for a specific subreddit across all campaigns."""
         try:
-            performance_records = self.json_repository.filter_items(
+            performance_records = self.json_storage.filter_items(
                 "subreddit_performance.json",
                 {"subreddit": subreddit}
             )
@@ -335,10 +335,10 @@ class StatsManager:
                 org_campaigns = self.campaign_manager.list_campaigns_by_organization(org_id)
                 campaign_ids = [c.id for c in org_campaigns]
                 
-                all_records = self.json_repository.load_data("subreddit_performance.json")
+                all_records = self.json_storage.load_data("subreddit_performance.json")
                 performance_records = [r for r in all_records if r.get("campaign_id") in campaign_ids]
             else:
-                performance_records = self.json_repository.load_data("subreddit_performance.json")
+                performance_records = self.json_storage.load_data("subreddit_performance.json")
             
             # Aggregate by subreddit
             subreddit_aggregates = {}
@@ -389,7 +389,7 @@ class StatsManager:
             # Get engagement records for the specified period
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
             
-            engagement_records = self.json_repository.load_data("engagement_stats.json")
+            engagement_records = self.json_storage.load_data("engagement_stats.json")
             
             # Filter by campaign if specified
             if campaign_id:
@@ -452,7 +452,7 @@ class StatsManager:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
             
             # Clean engagement stats
-            engagement_records = self.json_repository.load_data("engagement_stats.json")
+            engagement_records = self.json_storage.load_data("engagement_stats.json")
             filtered_engagement = []
             
             for record in engagement_records:
@@ -465,7 +465,7 @@ class StatsManager:
                     filtered_engagement.append(record)
             
             # Clean subreddit performance
-            performance_records = self.json_repository.load_data("subreddit_performance.json")
+            performance_records = self.json_storage.load_data("subreddit_performance.json")
             filtered_performance = []
             
             for record in performance_records:
@@ -478,8 +478,8 @@ class StatsManager:
                     filtered_performance.append(record)
             
             # Save cleaned data
-            self.json_repository.save_data("engagement_stats.json", filtered_engagement)
-            self.json_repository.save_data("subreddit_performance.json", filtered_performance)
+            self.json_storage.save_data("engagement_stats.json", filtered_engagement)
+            self.json_storage.save_data("subreddit_performance.json", filtered_performance)
             
             return {
                 "engagement_records_removed": len(engagement_records) - len(filtered_engagement),

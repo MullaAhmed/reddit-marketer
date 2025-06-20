@@ -12,7 +12,7 @@ from app.utils.text_processing import chunk_text
 logger = logging.getLogger(__name__)
 
 
-class VectorRepository:
+class VectorStorage:
     """
     Vector storage manager for document embeddings and retrieval.
     """

@@ -10,6 +10,7 @@ A comprehensive Reddit marketing automation system that helps organizations enga
 - **Automated Posting**: Execute approved responses automatically
 - **Campaign Management**: Track and manage multiple marketing campaigns
 - **Response Tracking**: Monitor posted responses and avoid duplicate interactions
+- **Comprehensive Analytics**: Track engagement metrics and campaign performance
 
 ## 🏗️ Architecture
 
@@ -18,22 +19,27 @@ A comprehensive Reddit marketing automation system that helps organizations enga
 app/
 ├── main.py                           # Single application entry point
 ├── core/                            # Core application functionality
-│   ├── config.py                    # Centralized configuration
-│   ├── dependencies.py              # FastAPI dependencies
-│   └── middleware.py                # Application middleware
+│   ├── settings_config.py           # Centralized configuration
+│   ├── app_dependencies.py          # FastAPI dependencies
+│   └── app_middleware.py            # Application middleware
 ├── api/                             # Unified API layer
 │   ├── router.py                    # Main API router
 │   └── endpoints/                   # All API endpoints
 │       ├── campaigns.py             # Campaign management endpoints
 │       ├── documents.py             # Document management endpoints
 │       ├── subreddits.py           # Subreddit discovery endpoints
+│       ├── stats.py                # Statistics and analytics endpoints
 │       └── health.py               # Health check endpoints
-├── services/                        # Business logic layer
-│   ├── campaign_service.py          # Campaign orchestration
-│   ├── document_service.py          # Document processing (RAG)
-│   ├── reddit_service.py            # Reddit operations
-│   ├── llm_service.py              # LLM interactions
-│   └── web_scraper.py              # Web scraping
+├── orchestrators/                   # High-level business logic coordination
+│   ├── campaign_orchestrator.py     # Campaign workflow orchestration
+│   └── llm_orchestrator.py         # LLM interactions orchestration
+├── processors/                      # Data processing operations
+│   └── document_processor.py        # Document processing (RAG)
+├── connectors/                      # External service integrations
+│   └── reddit_connector.py          # Reddit API operations
+├── services/                        # Utility services
+│   ├── stats_service.py             # Statistics and analytics service
+│   └── web_scraper.py              # Web scraping service
 ├── models/                          # Data models
 │   ├── campaign.py                  # Campaign-related models
 │   ├── document.py                  # Document-related models
@@ -43,23 +49,26 @@ app/
 │   ├── reddit_client.py             # Reddit API client
 │   ├── llm_client.py               # LLM provider clients
 │   └── storage_client.py           # Storage clients (ChromaDB, etc.)
+├── managers/                        # Data management layer
+│   ├── campaign_manager.py          # Campaign storage management
+│   ├── document_manager.py          # Document metadata management
+│   ├── stats_manager.py            # Statistics data management
+│   └── embeddings_manager.py        # Embeddings management
+├── repositories/                    # Data access layer
+│   └── json_repository.py           # JSON file operations
+├── storage/                         # Storage layer
+│   ├── vector_storage.py            # Vector database operations
+│   └── json_storage.py             # JSON file storage
 ├── utils/                           # Utility functions
 │   ├── text_processing.py          # Text utilities
 │   ├── file_utils.py               # File operations
 │   └── validation.py               # Data validation
-├── storage/                         # Data persistence layer
-│   ├── json_storage.py              # JSON file operations
-│   └── vector_storage.py            # Vector database operations
-└── managers/                        # Storage managers
-    ├── document_manager.py          # Document storage
-    ├── campaign_manager.py          # Campaign storage
-    └── embeddings_manager.py        # Embeddings management
 ```
 
 ### Key Design Principles
 - **Separation of Concerns**: Clear boundaries between API, business logic, and data layers
-- **Unified Services**: Centralized document processing and Reddit operations
-- **Modular Architecture**: Easy to extend and maintain
+- **Unified Architecture**: Centralized orchestration with specialized processors and connectors
+- **Modular Design**: Easy to extend and maintain with clear component responsibilities
 - **Clean Dependencies**: Minimal coupling between components
 
 ## 📋 Workflow
@@ -128,6 +137,17 @@ execution_request = ResponseExecutionRequest(
 - `POST /api/v1/subreddits/discover` - Discover subreddits
 - `POST /api/v1/subreddits/extract-topics` - Extract topics
 
+### Statistics & Analytics
+- `POST /api/v1/stats/collect-engagement` - Collect engagement metrics
+- `GET /api/v1/stats/campaign/{id}` - Campaign analytics
+- `GET /api/v1/stats/organization/{id}` - Organization analytics
+- `GET /api/v1/stats/subreddit/{name}` - Subreddit performance
+- `GET /api/v1/stats/trending-subreddits` - Trending subreddits
+- `GET /api/v1/stats/engagement-insights` - Engagement insights
+- `GET /api/v1/stats/campaign-report/{id}` - Campaign reports
+- `GET /api/v1/stats/organization-report/{id}` - Organization reports
+- `POST /api/v1/stats/cleanup` - Data cleanup
+
 ### Health & Monitoring
 - `GET /api/v1/health/` - Basic health check
 - `GET /api/v1/health/detailed` - Detailed health check
@@ -183,6 +203,34 @@ Campaigns progress through these states:
 6. `RESPONSES_POSTED` - Responses posted to Reddit
 7. `COMPLETED` - Campaign finished
 
+## 📈 Analytics & Insights
+
+The system provides comprehensive analytics including:
+
+### Campaign Analytics
+- Response success/failure rates
+- Engagement metrics (scores, replies)
+- Subreddit performance breakdown
+- Timeline analysis
+
+### Organization Analytics
+- Cross-campaign performance metrics
+- Trending subreddits identification
+- Success rate analysis
+- ROI insights
+
+### Engagement Tracking
+- Real-time engagement collection
+- Score history tracking
+- Reply monitoring
+- Sentiment analysis
+
+### Performance Reports
+- Automated report generation
+- Actionable recommendations
+- Trend identification
+- Comparative analysis
+
 ## 🛠️ Configuration
 
 ### Environment Variables
@@ -224,11 +272,11 @@ reddit_credentials = {
 
 ### Programmatic Usage
 ```python
-from app.services.campaign_service import CampaignService
+from app.orchestrators.campaign_orchestrator import CampaignOrchestrator
 from app.models.campaign import CampaignCreateRequest, ResponseTone
 
-# Initialize service
-campaign_service = CampaignService()
+# Initialize orchestrator
+campaign_orchestrator = CampaignOrchestrator()
 
 # Create campaign
 request = CampaignCreateRequest(
@@ -236,7 +284,7 @@ request = CampaignCreateRequest(
     response_tone=ResponseTone.HELPFUL
 )
 
-success, message, campaign = await campaign_service.create_campaign(
+success, message, campaign = await campaign_orchestrator.create_campaign(
     "org-1", request
 )
 ```
@@ -254,9 +302,9 @@ response = requests.post(
     }
 )
 
-# Get campaign status
-status_response = requests.get(
-    f"http://localhost:8000/api/v1/campaigns/{campaign_id}/status"
+# Get campaign analytics
+analytics_response = requests.get(
+    f"http://localhost:8000/api/v1/stats/campaign/{campaign_id}"
 )
 ```
 
@@ -277,6 +325,23 @@ response = requests.post(
 )
 ```
 
+### Analytics Collection
+```python
+# Collect engagement metrics
+response = requests.post(
+    "http://localhost:8000/api/v1/stats/collect-engagement",
+    json={
+        "reddit_comment_ids": ["comment1", "comment2"],
+        "reddit_credentials": reddit_creds
+    }
+)
+
+# Get trending subreddits
+trending = requests.get(
+    "http://localhost:8000/api/v1/stats/trending-subreddits?organization_id=org-1"
+)
+```
+
 ## 🧠 AI & LLM Integration
 
 ### Supported Providers
@@ -284,7 +349,7 @@ response = requests.post(
 - **Google**: Gemini 2.0 Flash
 - **Groq**: Llama 3.3 70B Versatile
 
-### LLM Service Features
+### LLM Orchestrator Features
 - **Multi-provider support**: Switch between different LLM providers
 - **Structured outputs**: JSON response formatting
 - **Temperature control**: Adjustable creativity levels
@@ -313,6 +378,8 @@ The system tracks:
 - Error logs and debugging info
 - LLM usage and costs
 - Vector storage statistics
+- Real-time engagement data
+- Performance trends
 
 ## 📚 Documentation
 
@@ -345,6 +412,9 @@ curl -X POST "http://localhost:8000/api/v1/documents/ingest?organization_id=test
 curl -X POST "http://localhost:8000/api/v1/campaigns/?organization_id=test-org" \
   -H "Content-Type: application/json" \
   -d '{"name": "Test Campaign", "response_tone": "helpful"}'
+
+# Test analytics
+curl "http://localhost:8000/api/v1/stats/trending-subreddits?limit=5"
 ```
 
 ## 🤝 Contributing
@@ -382,7 +452,7 @@ For issues and questions:
 
 ## 🔄 Version History
 
-- **v2.0.0**: Clean architecture with modular design
+- **v2.0.0**: Clean architecture with modular design and comprehensive analytics
 - **v1.0.0**: Initial release with basic campaign functionality
 
 ---

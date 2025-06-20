@@ -11,7 +11,7 @@ from app.models.document import (
     Organization, Document, DocumentQuery, DocumentResponse, QueryResponse
 )
 from app.managers.document_manager import DocumentManager
-from app.repositories.vector_repository import VectorRepository
+from app.storage.vector_storage import VectorStorage
 from app.utils.text_processing import chunk_text, clean_text
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class DocumentProcessor:
         """Initialize the document processor."""
         self.data_dir = data_dir
         self.document_manager = DocumentManager(data_dir)
-        self.vector_repository = VectorRepository(data_dir)
+        self.vector_storage = VectorStorage(data_dir)
         self.logger = logger
     
     # ========================================
@@ -117,8 +117,8 @@ class DocumentProcessor:
                     chunk_overlap=doc_dict.get('chunk_overlap', 200)
                 )
                 
-                # Store document chunks in vector repository
-                success, message = self.vector_repository.store_document_chunks(
+                # Store document chunks in vector storage
+                success, message = self.vector_storage.store_document_chunks(
                     org_id=org_id,
                     document_id=doc.id,
                     title=doc.title,
@@ -186,8 +186,8 @@ class DocumentProcessor:
                     processing_time_ms=0
                 )
             
-            # Perform retrieval using vector repository
-            results = self.vector_repository.query_documents(
+            # Perform retrieval using vector storage
+            results = self.vector_storage.query_documents(
                 org_id=query.organization_id,
                 query=query.query,
                 method=query.method,
@@ -248,7 +248,7 @@ class DocumentProcessor:
             
             for doc_id in document_ids:
                 # Get all chunks for this document using the new method
-                chunks = self.vector_repository.get_document_chunks_by_document_id(
+                chunks = self.vector_storage.get_document_chunks_by_document_id(
                     org_id=organization_id,
                     document_id=doc_id
                 )
