@@ -9,7 +9,7 @@ from typing import Dict, List, Any, Tuple, Optional
 
 from app.clients.reddit_client import RedditClient
 from app.utils.text_processing import clean_text
-from app.storage.json_storage import JsonStorage
+from app.repositories.json_repository import JsonRepository
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class RedditService:
     def __init__(self, data_dir: str = "data"):
         """Initialize the Reddit service."""
         self.data_dir = data_dir
-        self.json_storage = JsonStorage(data_dir)
+        self.json_repository = JsonRepository(data_dir)
         self.logger = logger
         
         # Reddit client will be initialized per operation
@@ -101,7 +101,7 @@ class RedditService:
                 "organization_id": organization_id,
                 "topics_used": topics
             }
-            self.json_storage.save_data("subreddits.json", subreddits_data)
+            self.json_repository.save_data("subreddits.json", subreddits_data)
             
             discovery_data = {
                 "topics": topics,
