@@ -63,11 +63,16 @@ class RedditService:
             all_subreddits = {}
        
             async with self._reddit_client: # Use the service's client as context manager
-                coroutines = [
-                    self._search_subreddits_by_topic(topic, self._reddit_client)
+                # Create tasks for concurrent searching
+                tasks = [
+                    asyncio.create_task(
+                        self._search_subreddits_by_topic(topic, self._reddit_client)
+                    )
                     for topic in topics
                 ]
-                results = await asyncio.gather(*coroutines, return_exceptions=True)
+                
+                # Run all search tasks concurrently
+                results = await asyncio.gather(*tasks, return_exceptions=True)
 
                 for topic, result in zip(topics, results):
                     if isinstance(result, Exception):
@@ -169,29 +174,44 @@ class RedditService:
             reddit_client = self._reddit_client
             
             all_posts = []
-            
+            tasks = []
+            search_params = []
+
             async with reddit_client:
-                # Search each subreddit for each topic
+                # Create tasks for concurrent searching
                 for subreddit in subreddits:
-                    for topic in topics:  # Removed slicing
-                        try:
-                            posts = await reddit_client.search_subreddit_posts(
-                                subreddit=subreddit,
-                                query=topic,
-                                sort="new",
-                                time_filter=time_filter,
-                                limit=max_posts_per_subreddit
+                    for topic in topics:
+                        search_params.append((subreddit, topic))
+                        tasks.append(
+                            asyncio.create_task(
+                                reddit_client.search_subreddit_posts(
+                                    subreddit=subreddit,
+                                    query=topic,
+                                    sort="new",
+                                    time_filter=time_filter,
+                                    limit=max_posts_per_subreddit
+                                )
                             )
-                            
-                            # Add subreddit and topic context to posts
-                            for post in posts:
-                                post['search_subreddit'] = subreddit
-                                post['search_topic'] = topic
-                            
-                            all_posts.extend(posts)
-                            
-                        except Exception as e:
-                            self.logger.warning(f"Error searching r/{subreddit} for '{topic}': {str(e)}")
+                        )
+
+                # Run all search tasks concurrently
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # Process results
+                for i, result in enumerate(results):
+                    subreddit, topic = search_params[i]
+                    
+                    if isinstance(result, Exception):
+                        self.logger.warning(f"Error searching r/{subreddit} for '{topic}': {str(result)}")
+                        continue
+                    
+                    posts = result
+                    # Add subreddit and topic context to posts
+                    for post in posts:
+                        post['search_subreddit'] = subreddit
+                        post['search_topic'] = topic
+                    
+                    all_posts.extend(posts)
             
             self.logger.info(f"Discovered {len(all_posts)} posts across {len(subreddits)} subreddits")
             
