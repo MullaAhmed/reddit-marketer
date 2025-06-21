@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from app.models.campaign import (
     Campaign, CampaignStatus, CampaignCreateRequest,
-    SubredditDiscoveryRequest, PostDiscoveryRequest,
+    SubredditDiscoveryRequest, SubredditDiscoveryByTopicsRequest, PostDiscoveryRequest,
     ResponseGenerationRequest, ResponseExecutionRequest,
     TargetPost, PlannedResponse, PostedResponse, ResponseType
 )
@@ -103,7 +103,7 @@ class CampaignService:
         return self.campaign_manager.save_campaign(campaign)
     
     # ========================================
-    # SUBREDDIT DISCOVERY
+    # TOPIC DISCOVERY
     # ========================================
     
     async def discover_topics(
@@ -135,24 +135,54 @@ class CampaignService:
             if not success:
                 return False, f"Topic extraction failed: {message}", None
             
-            return campaign, campaign_context, topics
+            # Update campaign with selected documents and status
+            campaign.selected_document_ids = request.document_ids
+            campaign.status = CampaignStatus.DOCUMENTS_UPLOADED
+            
+            if not self._update_campaign(campaign):
+                return False, "Failed to update campaign", None
+            
+            self.logger.info(f"Extracted {len(topics)} topics for campaign {campaign_id}")
+            
+            return True, f"Extracted {len(topics)} topics from {len(request.document_ids)} documents", {
+                "topics": topics,
+                "selected_document_ids": request.document_ids,
+                "total_topics": len(topics)
+            }
+            
         except Exception as e:
             self.logger.error(f"Error extracting topics for campaign {campaign_id}: {str(e)}")
             return False, f"Error extracting topics: {str(e)}", None
     
+    # ========================================
+    # SUBREDDIT DISCOVERY
+    # ========================================
+    
     async def discover_subreddits(
         self, 
-        campaign: Campaign, 
-        topics:str,
-        campaign_context:str,
-
-        request: SubredditDiscoveryRequest
+        campaign_id: str, 
+        request: SubredditDiscoveryByTopicsRequest
     ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
-        """Discover relevant subreddits based on selected documents."""
+        """Discover relevant subreddits based on provided topics."""
         try:
-            # Discover subreddits using Reddit service with extracted topics
+            # Get campaign
+            campaign = self.campaign_manager.get_campaign(campaign_id)
+            if not campaign:
+                return False, "Campaign not found", None
+            
+            # Ensure campaign has documents selected
+            if not campaign.selected_document_ids:
+                return False, "Campaign must have documents selected before subreddit discovery", None
+            
+            # Get campaign context for ranking
+            campaign_context = await self._get_relevant_campaign_context(
+                campaign.organization_id, 
+                campaign.selected_document_ids
+            )
+            
+            # Discover subreddits using Reddit service with provided topics
             success, message, discovery_data = await self.reddit_service.discover_subreddits_by_topics(
-                topics=topics,
+                topics=request.topics,
                 organization_id=campaign.organization_id,
                 min_subscribers=10000
             )
@@ -183,7 +213,6 @@ class CampaignService:
                 discovery_data["relevant_subreddits"] = {}
             
             # Update campaign with results
-            campaign.selected_document_ids = request.document_ids
             campaign.target_subreddits = list(discovery_data["relevant_subreddits"].keys())
             campaign.status = CampaignStatus.SUBREDDITS_DISCOVERED
             
@@ -194,7 +223,7 @@ class CampaignService:
             
             return True, f"Discovered {len(campaign.target_subreddits)} relevant subreddits", {
                 "subreddits": campaign.target_subreddits,
-                "topics": topics,
+                "topics": request.topics,
                 "total_found": len(discovery_data.get("relevant_subreddits", {}))
             }
             

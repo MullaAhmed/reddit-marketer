@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 from app.core.dependencies import CampaignServiceDep, validate_organization_id
 from app.models.campaign import (
     Campaign, CampaignCreateRequest, CampaignResponse,
-    SubredditDiscoveryRequest, PostDiscoveryRequest,
+    SubredditDiscoveryRequest, SubredditDiscoveryByTopicsRequest, PostDiscoveryRequest,
     ResponseGenerationRequest, ResponseExecutionRequest
 )
 
@@ -73,13 +73,34 @@ async def list_campaigns(
     )
 
 
-@router.post("/{campaign_id}/discover-subreddits", response_model=CampaignResponse)
-async def discover_subreddits(
+@router.post("/{campaign_id}/discover-topics", response_model=CampaignResponse)
+async def discover_topics(
     campaign_id: str,
     request: SubredditDiscoveryRequest,
     campaign_service: CampaignServiceDep = None
 ):
-    """Discover relevant subreddits based on selected documents."""
+    """Discover relevant topics based on selected documents."""
+    success, message, data = await campaign_service.discover_topics(
+        campaign_id, request
+    )
+    
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    
+    return CampaignResponse(
+        success=success,
+        message=message,
+        data=data
+    )
+
+
+@router.post("/{campaign_id}/discover-subreddits", response_model=CampaignResponse)
+async def discover_subreddits(
+    campaign_id: str,
+    request: SubredditDiscoveryByTopicsRequest,
+    campaign_service: CampaignServiceDep = None
+):
+    """Discover relevant subreddits based on provided topics."""
     success, message, data = await campaign_service.discover_subreddits(
         campaign_id, request
     )
