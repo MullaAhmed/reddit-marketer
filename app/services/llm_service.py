@@ -16,7 +16,7 @@ class PromptTemplates:
     """Centralized prompt templates for consistent AI interactions."""
     
     TOPIC_EXTRACTION = """
-    Analyze the following text and extract 5-10 relevant topics that could be used 
+    Analyze the following text and extract relevant topics that could be used 
     to find related subreddits on Reddit. Return the topics as a JSON array.
     
     Text: {content}
