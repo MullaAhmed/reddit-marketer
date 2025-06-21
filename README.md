@@ -4,6 +4,10 @@ A comprehensive Reddit marketing automation system that helps organizations enga
 
 ## 🚀 Features
 
+- **Multiple Document Ingestion Methods**: 
+  - Direct content input
+  - File upload processing
+  - **URL scraping** with Firecrawl and BeautifulSoup
 - **Document-Based Subreddit Discovery**: Analyze uploaded documents to find relevant subreddits
 - **Intelligent Post Discovery**: Find relevant posts and comments to engage with
 - **AI-Powered Response Generation**: Generate contextual, helpful responses based on your content
@@ -11,6 +15,7 @@ A comprehensive Reddit marketing automation system that helps organizations enga
 - **Campaign Management**: Track and manage multiple marketing campaigns
 - **Analytics & Reporting**: Comprehensive analytics for campaign performance
 - **Response Tracking**: Monitor posted responses and avoid duplicate interactions
+- **Complete Example Workflow**: Jupyter notebook demonstrating all features
 
 ## 🏗️ Architecture
 
@@ -59,6 +64,7 @@ app/
 │   ├── file_utils.py               # File management utilities
 │   ├── validator_utils.py          # Data validation utilities
 │   └── web_scraper.py              # Web scraping utilities
+└── run_example_workflow.ipynb       # Complete example workflow
 ```
 
 ### Key Design Principles
@@ -66,7 +72,7 @@ app/
 - **Unified Services**: Centralized document processing and Reddit operations
 - **Modular Architecture**: Easy to extend and maintain
 - **Clean Dependencies**: Minimal coupling between components
-- **Consistent Naming**: All utility files follow clear naming conventions
+- **Consistent Naming**: Clear and descriptive naming conventions
 
 ## 📋 Workflow
 
@@ -80,14 +86,35 @@ create_request = CampaignCreateRequest(
 )
 ```
 
-### 2. Document Selection & Subreddit Discovery
+### 2. Document Ingestion (Multiple Methods)
+```python
+# Method 1: Direct content
+doc_request = DocumentCreateRequest(
+    title="Python Best Practices",
+    content="Your content here...",
+    metadata={"category": "programming"}
+)
+
+# Method 2: URL scraping
+url_request = DocumentIngestURLRequest(
+    url="https://example.com/article",
+    title="Article Title",
+    organization_id="org-1",
+    scraping_method="auto"  # firecrawl, requests, or auto
+)
+
+# Method 3: File upload (via API)
+# Upload files through the /documents/upload endpoint
+```
+
+### 3. Subreddit Discovery
 ```python
 subreddit_request = SubredditDiscoveryRequest(
     document_ids=["doc-1", "doc-2"]
 )
 ```
 
-### 3. Post Discovery
+### 4. Post Discovery
 ```python
 post_request = PostDiscoveryRequest(
     subreddits=["python", "learnpython"],
@@ -96,7 +123,7 @@ post_request = PostDiscoveryRequest(
 )
 ```
 
-### 4. Response Generation
+### 5. Response Generation
 ```python
 response_request = ResponseGenerationRequest(
     target_post_ids=["post-1", "post-2"],
@@ -104,7 +131,7 @@ response_request = ResponseGenerationRequest(
 )
 ```
 
-### 5. Response Execution
+### 6. Response Execution
 ```python
 execution_request = ResponseExecutionRequest(
     planned_response_ids=["response-1", "response-2"],
@@ -126,7 +153,9 @@ execution_request = ResponseExecutionRequest(
 - `POST /api/v1/campaigns/{id}/execute-responses` - Post responses
 
 ### Document Management
-- `POST /api/v1/documents/ingest` - Ingest documents
+- `POST /api/v1/documents/ingest` - Ingest documents (direct content)
+- `POST /api/v1/documents/ingest-url` - **Ingest from URL** (web scraping)
+- `POST /api/v1/documents/upload` - Upload file
 - `POST /api/v1/documents/query` - Query documents
 - `GET /api/v1/documents/organizations/{id}` - Get organization documents
 
@@ -153,6 +182,7 @@ execution_request = ResponseExecutionRequest(
 - OpenAI API key
 - Google API key (for Gemini)
 - Reddit API credentials
+- Firecrawl API key (optional, for enhanced web scraping)
 
 ### Setup
 1. Clone the repository
@@ -176,6 +206,68 @@ execution_request = ResponseExecutionRequest(
 
 The API will be available at `http://localhost:8000` with interactive documentation at `http://localhost:8000/docs`.
 
+## 📓 Example Workflow
+
+### Complete Jupyter Notebook
+The repository includes `run_example_workflow.ipynb` - a comprehensive Jupyter notebook that demonstrates the entire workflow:
+
+```bash
+# Install Jupyter if needed
+pip install jupyter
+
+# Run the example workflow
+jupyter notebook run_example_workflow.ipynb
+```
+
+### What the Notebook Demonstrates
+1. **Setup & Configuration** - Environment validation and service initialization
+2. **Organization Setup** - Create and configure an organization
+3. **Document Ingestion** - All three methods:
+   - Direct content input
+   - Simulated file upload
+   - URL scraping with web scraper
+4. **Campaign Creation** - Create and configure a marketing campaign
+5. **Subreddit Discovery** - AI-powered topic extraction and subreddit finding
+6. **Post Discovery** - Find relevant posts in target subreddits
+7. **Response Generation** - AI-generated contextual responses
+8. **Response Execution** - Post responses to Reddit (with safety controls)
+9. **Analytics & Reporting** - Comprehensive performance analysis
+
+### Safety Features in Notebook
+- **Reddit Posting Control**: `ACTUALLY_POST_TO_REDDIT = False` prevents accidental posting
+- **Credential Validation**: Checks for required API keys
+- **Error Handling**: Graceful handling of API failures
+- **Independent Cells**: Each step can be run independently
+
+## 🌐 Web Scraping Capabilities
+
+### Supported Methods
+- **Firecrawl API**: Premium web scraping with clean markdown output
+- **BeautifulSoup + Requests**: Fallback method for basic scraping
+- **Auto Mode**: Tries Firecrawl first, falls back to BeautifulSoup
+
+### URL Ingestion Example
+```python
+# Via API
+response = requests.post(
+    "http://localhost:8000/api/v1/documents/ingest-url",
+    json={
+        "url": "https://example.com/article",
+        "title": "Article Title",
+        "organization_id": "org-1",
+        "scraping_method": "auto"
+    }
+)
+
+# Via Service
+success, message, doc_id = await document_service.ingest_document_from_url(
+    url="https://example.com/article",
+    organization_id="org-1",
+    title="Article Title",
+    scraping_method="auto"
+)
+```
+
 ## 🔒 Safety Features
 
 - **Duplicate Prevention**: Avoids responding to the same author multiple times
@@ -183,6 +275,8 @@ The API will be available at `http://localhost:8000` with interactive documentat
 - **Manual Approval**: Responses require explicit approval before posting
 - **Rate Limiting**: Configurable daily response limits
 - **Error Handling**: Comprehensive error tracking and recovery
+- **URL Validation**: Validates URLs before scraping
+- **Content Filtering**: Ensures scraped content is meaningful
 
 ## 📊 Campaign Status Tracking
 
@@ -253,6 +347,22 @@ reddit_credentials = {
 
 ## 📝 Usage Examples
 
+### URL Ingestion
+```python
+# Ingest document from URL
+url_request = DocumentIngestURLRequest(
+    url="https://realpython.com/python-basics/",
+    title="Python Basics Tutorial",
+    organization_id="org-1",
+    scraping_method="auto"
+)
+
+response = requests.post(
+    "http://localhost:8000/api/v1/documents/ingest-url",
+    json=url_request.model_dump()
+)
+```
+
 ### Programmatic Usage
 ```python
 from app.services.campaign_service import CampaignService
@@ -293,7 +403,7 @@ status_response = requests.get(
 
 ### Document Ingestion
 ```python
-# Ingest documents
+# Direct content ingestion
 documents = [
     {
         "title": "Python Tutorial",
@@ -305,6 +415,17 @@ documents = [
 response = requests.post(
     "http://localhost:8000/api/v1/documents/ingest?organization_id=org-1",
     json=documents
+)
+
+# URL ingestion
+url_response = requests.post(
+    "http://localhost:8000/api/v1/documents/ingest-url",
+    json={
+        "url": "https://example.com/article",
+        "title": "Article Title",
+        "organization_id": "org-1",
+        "scraping_method": "auto"
+    }
 )
 ```
 
@@ -347,6 +468,7 @@ performance_report = requests.get(
 3. **Content Quality**: Focus on providing genuine value to communities
 4. **Manual Review**: Always review generated responses before posting
 5. **Community Rules**: Respect individual subreddit rules and guidelines
+6. **Web Scraping Ethics**: Respect robots.txt and website terms of service
 
 ## 🔍 Monitoring & Analytics
 
@@ -359,12 +481,15 @@ The system tracks:
 - Vector storage statistics
 - Subreddit effectiveness
 - Performance trends over time
+- Document ingestion statistics
+- Web scraping success rates
 
 ## 📚 Documentation
 
 - **API Documentation**: Available at `/docs` when running the server
 - **OpenAPI Spec**: Available at `/openapi.json`
 - **Health Checks**: Multiple endpoints for monitoring system health
+- **Example Workflow**: Complete Jupyter notebook with step-by-step guide
 
 ## 🧪 Testing
 
@@ -387,6 +512,11 @@ curl -X POST "http://localhost:8000/api/v1/documents/ingest?organization_id=test
   -H "Content-Type: application/json" \
   -d '[{"title": "Test Doc", "content": "Test content"}]'
 
+# Test URL ingestion
+curl -X POST "http://localhost:8000/api/v1/documents/ingest-url" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "organization_id": "test-org"}'
+
 # Test campaign creation
 curl -X POST "http://localhost:8000/api/v1/campaigns/?organization_id=test-org" \
   -H "Content-Type: application/json" \
@@ -394,6 +524,15 @@ curl -X POST "http://localhost:8000/api/v1/campaigns/?organization_id=test-org" 
 
 # Test analytics
 curl "http://localhost:8000/api/v1/analytics/platform/overview"
+```
+
+### Example Workflow Testing
+```bash
+# Run the complete example workflow
+jupyter notebook run_example_workflow.ipynb
+
+# Or run specific cells interactively
+jupyter notebook run_example_workflow.ipynb
 ```
 
 ## 🤝 Contributing
@@ -409,12 +548,18 @@ curl "http://localhost:8000/api/v1/analytics/platform/overview"
 # Install development dependencies
 pip install -r requirements.txt
 
+# Install Jupyter for running examples
+pip install jupyter
+
 # Run the application in development mode
 cd app
 python main.py
 
 # Access API documentation
 open http://localhost:8000/docs
+
+# Run example workflow
+jupyter notebook run_example_workflow.ipynb
 ```
 
 ## 📄 License
@@ -426,15 +571,17 @@ MIT License - see LICENSE file for details
 For issues and questions:
 1. Check the API documentation at `/docs`
 2. Review the health check endpoints
-3. Check application logs for detailed error information
-4. Create an issue on GitHub with detailed information
+3. Run the example workflow notebook
+4. Check application logs for detailed error information
+5. Create an issue on GitHub with detailed information
 
 ## 🔄 Version History
 
+- **v2.2.0**: Added URL ingestion capabilities and complete example workflow
 - **v2.1.0**: Added comprehensive analytics and reporting system
 - **v2.0.0**: Clean architecture with modular design
 - **v1.0.0**: Initial release with basic campaign functionality
 
 ---
 
-**Note**: This system is designed for legitimate marketing purposes. Always follow Reddit's community guidelines and terms of service.
+**Note**: This system is designed for legitimate marketing purposes. Always follow Reddit's community guidelines and terms of service. The example workflow notebook provides a safe way to test all features before using them in production.
