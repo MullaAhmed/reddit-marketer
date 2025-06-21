@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 from app.core.dependencies import DocumentServiceDep, validate_organization_id
 from app.models.document import (
     DocumentCreateRequest, DocumentOperationResponse, DocumentQuery,
-    QueryResponse, Organization
+    QueryResponse, Organization, DocumentIngestURLRequest
 )
 
 router = APIRouter()
@@ -49,6 +49,39 @@ async def ingest_documents(
         data={
             "document_ids": document_ids,
             "documents_ingested": len(document_ids)
+        }
+    )
+
+
+@router.post("/ingest-url", response_model=DocumentOperationResponse)
+async def ingest_document_from_url(
+    request: DocumentIngestURLRequest,
+    document_service: DocumentServiceDep = None
+):
+    """Ingest a document from a URL by scraping its content."""
+    org_id = validate_organization_id(request.organization_id)
+    
+    success, message, document_id = await document_service.ingest_document_from_url(
+        url=request.url,
+        organization_id=org_id,
+        title=request.title,
+        organization_name=request.organization_name,
+        chunk_size=request.chunk_size,
+        chunk_overlap=request.chunk_overlap,
+        scraping_method=request.scraping_method
+    )
+    
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    
+    return DocumentOperationResponse(
+        success=success,
+        message=message,
+        data={
+            "document_id": document_id,
+            "url": request.url,
+            "title": request.title,
+            "scraping_method": request.scraping_method
         }
     )
 

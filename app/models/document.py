@@ -64,6 +64,22 @@ class DocumentCreateRequest(BaseModel):
     chunk_overlap: Optional[int] = Field(None, ge=0, le=1000)
 
 
+class DocumentIngestURLRequest(BaseModel):
+    """Request model for ingesting documents from URLs."""
+    
+    url: str = Field(..., min_length=1, description="URL to scrape content from")
+    title: Optional[str] = Field(None, min_length=1, max_length=200, description="Optional title for the document")
+    organization_id: str = Field(..., description="Organization ID")
+    organization_name: Optional[str] = Field(None, description="Optional organization name for auto-creation")
+    
+    # Optional chunking parameters
+    chunk_size: Optional[int] = Field(None, ge=100, le=5000, description="Size of text chunks")
+    chunk_overlap: Optional[int] = Field(None, ge=0, le=1000, description="Overlap between chunks")
+    
+    # Scraping method
+    scraping_method: str = Field(default="auto", description="Scraping method: 'auto', 'firecrawl', or 'requests'")
+
+
 class DocumentQuery(BaseModel):
     """Model for document query requests."""
     

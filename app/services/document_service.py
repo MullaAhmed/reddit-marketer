@@ -12,7 +12,9 @@ from app.models.document import (
 )
 from app.managers.document_manager import DocumentManager
 from app.storage.vector_storage import VectorStorage
+from app.utils.web_scraper import WebScraperService
 from app.utils.text_utils import chunk_text, clean_text
+from app.utils.validator_utils import is_valid_url
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +28,13 @@ class DocumentService:
     def __init__(
         self,
         document_manager: DocumentManager,
-        vector_storage: VectorStorage
+        vector_storage: VectorStorage,
+        web_scraper_service: WebScraperService
     ):
         """Initialize the document service."""
         self.document_manager = document_manager
         self.vector_storage = vector_storage
+        self.web_scraper_service = web_scraper_service
         self.logger = logger
     
     # ========================================
@@ -153,6 +157,83 @@ class DocumentService:
         except Exception as e:
             self.logger.error(f"Error during document ingestion for org {org_id}: {str(e)}")
             return False, f"Error during ingestion: {str(e)}", []
+    
+    async def ingest_document_from_url(
+        self,
+        url: str,
+        organization_id: str,
+        title: Optional[str] = None,
+        organization_name: Optional[str] = None,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None,
+        scraping_method: str = "auto"
+    ) -> Tuple[bool, str, Optional[str]]:
+        """
+        Ingest a document from a URL by scraping its content.
+        
+        Args:
+            url: URL to scrape content from
+            organization_id: Organization ID
+            title: Optional title for the document (defaults to URL)
+            organization_name: Optional organization name for auto-creation
+            chunk_size: Optional chunk size for text splitting
+            chunk_overlap: Optional chunk overlap for text splitting
+            scraping_method: Scraping method to use
+            
+        Returns:
+            Tuple of (success: bool, message: str, document_id: Optional[str])
+        """
+        try:
+            # Validate URL
+            if not is_valid_url(url):
+                return False, "Invalid URL format", None
+            
+            self.logger.info(f"Starting URL ingestion for {url}")
+            
+            # Scrape content from URL
+            scraped_content = self.web_scraper_service.scrape_url(
+                url=url,
+                method=scraping_method
+            )
+            
+            if not scraped_content:
+                return False, f"Failed to scrape content from URL: {url}", None
+            
+            if not scraped_content.strip():
+                return False, f"No content found at URL: {url}", None
+            
+            # Prepare document data
+            doc_title = title or f"Document from {url}"
+            doc_dict = {
+                "title": doc_title,
+                "content": scraped_content,
+                "metadata": {
+                    "source": "url_scraping",
+                    "source_url": url,
+                    "scraping_method": scraping_method,
+                    "content_length": len(scraped_content)
+                },
+                "chunk_size": chunk_size,
+                "chunk_overlap": chunk_overlap
+            }
+            
+            # Use existing document ingestion method
+            success, message, document_ids = self.ingest_documents(
+                documents=[doc_dict],
+                org_id=organization_id,
+                org_name=organization_name
+            )
+            
+            if success and document_ids:
+                document_id = document_ids[0]
+                self.logger.info(f"Successfully ingested document from URL {url} with ID {document_id}")
+                return True, f"Successfully ingested document from URL: {url}", document_id
+            else:
+                return False, f"Failed to ingest document from URL: {message}", None
+                
+        except Exception as e:
+            self.logger.error(f"Error ingesting document from URL {url}: {str(e)}")
+            return False, f"Error ingesting document from URL: {str(e)}", None
     
     def _check_for_duplicate_documents(self, org_id: str, title: str) -> bool:
         """Check if a document with the same title and org already exists."""

@@ -19,6 +19,7 @@ from app.storage.json_storage import JsonStorage
 from app.clients.llm_client import LLMClient
 from app.clients.reddit_client import RedditClient
 from app.clients.storage_client import VectorStorageClient
+from app.utils.web_scraper import WebScraperService
 from app.utils.validator_utils import is_valid_organization_id_format
 from app.core.settings import settings
 
@@ -78,6 +79,10 @@ def get_vector_storage_client() -> VectorStorageClient:
     return VectorStorageClient()
 
 
+def get_web_scraper_service() -> WebScraperService:
+    return WebScraperService()
+
+
 def get_campaign_service(
     campaign_manager: "CampaignManagerDep" = Depends(get_campaign_manager),
     document_service: "DocumentServiceDep" = Depends(lambda: get_document_service()),
@@ -94,11 +99,13 @@ def get_campaign_service(
 
 def get_document_service(
     document_manager: "DocumentManagerDep" = Depends(get_document_manager),
-    vector_storage: "VectorStorageDep" = Depends(get_vector_storage)
+    vector_storage: "VectorStorageDep" = Depends(get_vector_storage),
+    web_scraper_service: "WebScraperServiceDep" = Depends(get_web_scraper_service)
 ) -> DocumentService:
     return DocumentService(
         document_manager=document_manager,
-        vector_storage=vector_storage
+        vector_storage=vector_storage,
+        web_scraper_service=web_scraper_service
     )
 
 
@@ -144,6 +151,7 @@ JsonStorageDep = Annotated[JsonStorage, Depends(get_json_storage)]
 LLMClientDep = Annotated[LLMClient, Depends(get_llm_client)]
 RedditClientDep = Annotated[RedditClient, Depends(get_reddit_client)]
 VectorStorageClientDep = Annotated[VectorStorageClient, Depends(get_vector_storage_client)]
+WebScraperServiceDep = Annotated[WebScraperService, Depends(get_web_scraper_service)]
 CampaignServiceDep = Annotated[CampaignService, Depends(get_campaign_service)]
 DocumentServiceDep = Annotated[DocumentService, Depends(get_document_service)]
 RedditServiceDep = Annotated[RedditService, Depends(get_reddit_service)]
