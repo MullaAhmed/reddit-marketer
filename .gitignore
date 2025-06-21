@@ -8,6 +8,6 @@ app/data
 */*/*/__pycache__/*
 */*/*/*/__pycache__/*
 .env
-examples_data
+data
 examples
 test.ipynb

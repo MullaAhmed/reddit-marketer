@@ -274,16 +274,16 @@ class RedditClient:
         await self._initialize_reddit()
         try:
             subreddit = await self._execute_with_retry(
-                lambda: self._reddit_instance.subreddit(subreddit_name)
+                lambda: self._reddit_instance.subreddit(subreddit_name, fetch=True)
             )
-            info = await self._execute_with_retry(lambda: subreddit.info())
+            
             return {
-                "name": info.display_name,
-                "subscribers": info.subscribers,
-                "description": info.public_description or info.description,
-                "created_utc": info.created_utc,
-                "over18": info.over18,
-                "url": info.url
+                "name": subreddit.display_name,
+                "subscribers": subreddit.subscribers,
+                "description": subreddit.public_description or subreddit.description,
+                "created_utc": subreddit.created_utc,
+                "over18": subreddit.over18,
+                "url": subreddit.url
             }
         except Exception as e:
             self.logger.error(f"Error getting info for r/{subreddit_name}: {str(e)}")

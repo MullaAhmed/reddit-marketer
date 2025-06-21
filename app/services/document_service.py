@@ -120,8 +120,8 @@ class DocumentService:
                 clean_content = clean_text(doc_dict['content'])
                 chunks = chunk_text(
                     clean_content,
-                    chunk_size=doc_dict.get('chunk_size', 1000),
-                    chunk_overlap=doc_dict.get('chunk_overlap', 200)
+                    chunk_size=doc_dict.get('chunk_size', 2000) or 2000,
+                    chunk_overlap=doc_dict.get('chunk_overlap', 600) or 600
                 )
                 
                 # Store document chunks in vector storage

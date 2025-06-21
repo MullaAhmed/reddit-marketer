@@ -106,12 +106,12 @@ class CampaignService:
     # SUBREDDIT DISCOVERY
     # ========================================
     
-    async def discover_subreddits(
+    async def discover_topics(
         self, 
         campaign_id: str, 
         request: SubredditDiscoveryRequest
     ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
-        """Discover relevant subreddits based on selected documents."""
+        """Discover relevant topics based on selected documents."""
         try:
             # Get campaign
             campaign = self.campaign_manager.get_campaign(campaign_id)
@@ -135,6 +135,21 @@ class CampaignService:
             if not success:
                 return False, f"Topic extraction failed: {message}", None
             
+            return campaign, campaign_context, topics
+        except Exception as e:
+            self.logger.error(f"Error extracting topics for campaign {campaign_id}: {str(e)}")
+            return False, f"Error extracting topics: {str(e)}", None
+    
+    async def discover_subreddits(
+        self, 
+        campaign: Campaign, 
+        topics:str,
+        campaign_context:str,
+
+        request: SubredditDiscoveryRequest
+    ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+        """Discover relevant subreddits based on selected documents."""
+        try:
             # Discover subreddits using Reddit service with extracted topics
             success, message, discovery_data = await self.reddit_service.discover_subreddits_by_topics(
                 topics=topics,
