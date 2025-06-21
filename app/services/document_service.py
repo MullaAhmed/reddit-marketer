@@ -12,7 +12,7 @@ from app.models.document import (
 )
 from app.managers.document_manager import DocumentManager
 from app.storage.vector_storage import VectorStorage
-from app.utils.text_processing import chunk_text, clean_text
+from app.utils.text_utils import chunk_text, clean_text
 
 logger = logging.getLogger(__name__)
 

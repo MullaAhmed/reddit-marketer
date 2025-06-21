@@ -55,9 +55,10 @@ app/
 │   ├── vector_storage.py            # Vector database operations
 │   └── json_storage.py             # JSON file storage
 ├── utils/                           # Utility functions
-│   ├── text_processing.py          # Text processing utilities
+│   ├── text_utils.py               # Text processing utilities
 │   ├── file_utils.py               # File management utilities
-│   └── data_validator_util.py      # Data validation utilities
+│   ├── validator_utils.py          # Data validation utilities
+│   └── web_scraper.py              # Web scraping utilities
 ```
 
 ### Key Design Principles
@@ -65,7 +66,7 @@ app/
 - **Unified Services**: Centralized document processing and Reddit operations
 - **Modular Architecture**: Easy to extend and maintain
 - **Clean Dependencies**: Minimal coupling between components
-- **Consistent Naming**: All utility files follow `*_util.py` pattern for consistency
+- **Consistent Naming**: All utility files follow clear naming conventions
 
 ## 📋 Workflow
 

@@ -19,7 +19,7 @@ from app.storage.json_storage import JsonStorage
 from app.clients.llm_client import LLMClient
 from app.clients.reddit_client import RedditClient
 from app.clients.storage_client import VectorStorageClient
-from app.utils.data_validator_util import is_valid_organization_id_format
+from app.utils.validator_utils import is_valid_organization_id_format
 from app.core.settings import settings
 
 
