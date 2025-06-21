@@ -1,7 +1,6 @@
 env
 experiments
 *.json
-*.ipynb
 */.env
 app/data
 */__pycache__/*
