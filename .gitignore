@@ -10,3 +10,4 @@ app/data
 .env
 examples_data
 examples
+test.ipynb
