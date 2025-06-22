@@ -285,23 +285,32 @@ class HaystackClient:
             }
     
     def _format_filters_for_chroma(self, filters: Dict[str, Any]) -> Dict[str, Any]:
-        """Format filters for ChromaDB compatibility."""
+        """
+        Format filters for ChromaDB compatibility.
+        
+        ChromaDB prefers simple key-value pairs for basic equality filters.
+        Only use explicit operators for complex conditions.
+        """
         if not filters:
             return {}
         
+        # For single, simple equality filters, use direct key-value format
         if len(filters) == 1:
-            # Single filter
             key, value = next(iter(filters.items()))
+            
+            # If it's a simple value (string, int, float, bool), use direct format
             if isinstance(value, (str, int, float, bool)):
-                return {key: {"$eq": value}}
+                return {key: value}
             elif isinstance(value, list):
                 return {key: {"$in": value}}
             elif isinstance(value, dict) and any(op in value for op in ["$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte"]):
+                # Already properly formatted with operators
                 return {key: value}
             else:
-                return {key: {"$eq": str(value)}}
+                # Convert to string and use direct format
+                return {key: str(value)}
         else:
-            # Multiple filters - use $and operator
+            # Multiple filters - use $and operator with explicit conditions
             conditions = []
             for key, value in filters.items():
                 if isinstance(value, (str, int, float, bool)):
