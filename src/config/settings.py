@@ -5,23 +5,20 @@ Environment-driven runtime settings with Haystack configuration.
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
+from dotenv import load_dotenv
 
+load_dotenv(".env",override=True)
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
     # LLM API Keys
-    OPENAI_API_KEY: str = ""
-    GOOGLE_API_KEY: str = ""
-    GROQ_API_KEY: str = ""
-    FIRECRAWL_API_KEY: str = ""
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY")
+    GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY")
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY")
+    FIRECRAWL_API_KEY: str = os.getenv("FIRECRAWL_API_KEY")
     
-    # Reddit API
-    REDDIT_CLIENT_ID: str = ""
-    REDDIT_CLIENT_SECRET: str = ""
-    REDDIT_USERNAME: Optional[str] = None
-    REDDIT_PASSWORD: Optional[str] = None
-    
+   
     # Storage
     DATA_DIR: str = "data"
     
@@ -31,10 +28,6 @@ class Settings(BaseSettings):
     EMBEDDING_PROVIDER: str = "openai"
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
-    
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
 
 
 # Global settings instance

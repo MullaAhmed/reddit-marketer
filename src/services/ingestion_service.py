@@ -5,7 +5,7 @@ Document ingestion service with Haystack RAG integration.
 import logging
 import requests
 from bs4 import BeautifulSoup
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 from urllib.parse import urlparse
 
 try:
