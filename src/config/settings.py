@@ -1,5 +1,5 @@
 """
-Environment-driven runtime settings.
+Environment-driven runtime settings with Haystack configuration.
 """
 
 import os
@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     
     # Storage
     DATA_DIR: str = "data"
+    
+    # Haystack/RAG Configuration
+    DOCUMENT_STORE_TYPE: str = "chroma"
+    EMBEDDING_MODEL: str = "text-embedding-3-large"
+    EMBEDDING_PROVIDER: str = "openai"
+    CHUNK_SIZE: int = 1000
+    CHUNK_OVERLAP: int = 200
     
     class Config:
         env_file = ".env"

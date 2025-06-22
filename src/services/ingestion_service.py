@@ -1,5 +1,5 @@
 """
-Document ingestion service.
+Document ingestion service with Haystack RAG integration.
 """
 
 import logging
@@ -16,7 +16,6 @@ except ImportError:
 
 from src.storage.json_storage import JsonStorage
 from src.storage.vector_storage import VectorStorage
-from src.clients.embedding_client import EmbeddingClient
 from src.models.common import generate_id, get_current_timestamp
 from src.models.document import Document
 from src.utils.text_utils import clean_text, chunk_text
@@ -26,18 +25,16 @@ logger = logging.getLogger(__name__)
 
 
 class IngestionService:
-    """Service for document ingestion and processing."""
+    """Service for document ingestion and processing with Haystack RAG."""
     
     def __init__(
         self,
         json_storage: JsonStorage,
-        vector_storage: VectorStorage,
-        embedding_client: EmbeddingClient
+        vector_storage: VectorStorage
     ):
         """Initialize the ingestion service."""
         self.json_storage = json_storage
         self.vector_storage = vector_storage
-        self.embedding_client = embedding_client
         self.logger = logger
         
         # Initialize storage files
@@ -49,9 +46,11 @@ class IngestionService:
         content: str,
         title: str,
         organization_id: str,
-        is_url: bool = False
+        is_url: bool = False,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: Optional[int] = None
     ) -> Tuple[bool, str, Optional[str]]:
-        """Ingest a document from content or URL."""
+        """Ingest a document from content or URL using Haystack RAG."""
         try:
             # If it's a URL, scrape the content
             if is_url:
@@ -76,34 +75,31 @@ class IngestionService:
                 organization_id=organization_id,
                 metadata={
                     "source": "url" if is_url else "direct",
-                    "original_url": content if is_url else None
+                    "original_url": content if is_url else None,
+                    "ingestion_method": "haystack_rag"
                 },
                 content_length=len(clean_content),
                 chunk_count=0,
                 created_at=timestamp
             )
             
-            # Chunk the content
-            chunks = chunk_text(clean_content)
+            # Chunk the content using configured settings
+            chunk_size = chunk_size or settings.CHUNK_SIZE
+            chunk_overlap = chunk_overlap or settings.CHUNK_OVERLAP
+            chunks = chunk_text(clean_content, chunk_size, chunk_overlap)
             document.chunk_count = len(chunks)
             
-            # Generate embeddings
-            embeddings = await self.embedding_client.generate_batch_embeddings(chunks)
-            if not embeddings or len(embeddings) != len(chunks):
-                return False, "Failed to generate embeddings", None
-            
-            # Store in vector database
-            success = self.vector_storage.store_document_chunks(
+            # Store in vector database using Haystack
+            success, message = self.vector_storage.store_document_chunks(
                 org_id=organization_id,
                 document_id=document_id,
                 title=title,
                 chunks=chunks,
-                embeddings=embeddings,
                 metadata=document.metadata
             )
             
             if not success:
-                return False, "Failed to store document chunks", None
+                return False, f"Failed to store document chunks: {message}", None
             
             # Save document metadata
             self.json_storage.update_item("documents.json", document.model_dump())
@@ -111,7 +107,7 @@ class IngestionService:
             # Update organization
             self._update_organization(organization_id)
             
-            self.logger.info(f"Successfully ingested document '{title}' with {len(chunks)} chunks")
+            self.logger.info(f"Successfully ingested document '{title}' with {len(chunks)} chunks using Haystack")
             return True, f"Successfully ingested document with {len(chunks)} chunks", document_id
             
         except Exception as e:
@@ -123,12 +119,12 @@ class IngestionService:
         organization_id: str,
         document_id: str
     ) -> Tuple[bool, str]:
-        """Delete a document and its chunks."""
+        """Delete a document and its chunks using Haystack."""
         try:
-            # Delete from vector storage
+            # Delete from vector storage using Haystack
             vector_success = self.vector_storage.delete_document(organization_id, document_id)
             if not vector_success:
-                return False, "Failed to delete document chunks"
+                return False, "Failed to delete document chunks from vector storage"
             
             # Delete metadata
             metadata_success = self.json_storage.delete_item("documents.json", document_id)
@@ -138,12 +134,71 @@ class IngestionService:
             # Update organization
             self._update_organization(organization_id)
             
-            self.logger.info(f"Successfully deleted document {document_id}")
+            self.logger.info(f"Successfully deleted document {document_id} using Haystack")
             return True, "Document deleted successfully"
             
         except Exception as e:
             self.logger.error(f"Error deleting document {document_id}: {str(e)}")
             return False, f"Error deleting document: {str(e)}"
+    
+    def query_documents(
+        self,
+        organization_id: str,
+        query: str,
+        method: str = "semantic",
+        top_k: int = 5,
+        filters: Optional[dict] = None
+    ) -> Tuple[bool, str, list]:
+        """Query documents using Haystack RAG."""
+        try:
+            results = self.vector_storage.query_documents(
+                org_id=organization_id,
+                query=query,
+                method=method,
+                top_k=top_k,
+                filters=filters
+            )
+            
+            if results:
+                return True, f"Found {len(results)} documents", results
+            else:
+                return True, "No documents found", []
+                
+        except Exception as e:
+            self.logger.error(f"Error querying documents: {str(e)}")
+            return False, f"Error querying documents: {str(e)}", []
+    
+    def get_document_context(
+        self,
+        organization_id: str,
+        document_ids: List[str],
+        query: Optional[str] = None
+    ) -> str:
+        """Get combined context from multiple documents using Haystack."""
+        try:
+            all_content = []
+            
+            for doc_id in document_ids:
+                chunks = self.vector_storage.get_document_chunks_by_document_id(
+                    org_id=organization_id,
+                    document_id=doc_id,
+                    query=query
+                )
+                
+                if chunks:
+                    # Combine chunks for this document
+                    doc_content = "\n".join([chunk['content'] for chunk in chunks])
+                    if doc_content.strip():
+                        all_content.append(doc_content)
+            
+            combined_content = "\n\n".join(all_content)
+            self.logger.info(f"Retrieved context: {len(combined_content)} characters from {len(document_ids)} documents")
+            
+            return combined_content
+            
+        except Exception as e:
+            self.logger.error(f"Error getting document context: {str(e)}")
+            return ""
     
     def _update_organization(self, organization_id: str):
         """Update organization document count."""
@@ -157,7 +212,9 @@ class IngestionService:
                     "id": organization_id,
                     "name": f"Organization {organization_id}",
                     "created_at": get_current_timestamp(),
-                    "document_count": 0
+                    "document_count": 0,
+                    "rag_enabled": True,
+                    "storage_backend": "haystack_chroma"
                 }
             
             # Count documents for this organization

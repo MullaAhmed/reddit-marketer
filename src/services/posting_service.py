@@ -1,5 +1,5 @@
 """
-Enhanced posting service with post and comment analysis.
+Enhanced posting service with Haystack RAG integration.
 """
 
 import logging
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class PostingService:
-    """Enhanced service for analyzing posts/comments and generating responses."""
+    """Enhanced service for analyzing posts/comments and generating responses with Haystack RAG."""
     
     def __init__(
         self,
@@ -44,13 +44,9 @@ class PostingService:
         tone: str = "helpful"
     ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
         """
-        Analyze post and comments, decide where to respond, and generate response.
+        Analyze post and comments, decide where to respond, and generate response using Haystack RAG.
         
-        This is the main orchestration method that:
-        1. Fetches post and comments
-        2. Analyzes them to decide where to respond
-        3. Retrieves relevant context
-        4. Generates the response
+        This method uses Haystack for intelligent context retrieval and response generation.
         """
         try:
             async with self.reddit_client:
@@ -74,10 +70,9 @@ class PostingService:
                     comments=[CommentInfo(**comment) for comment in comments]
                 )
                 
-                # Step 4: Get relevant context from documents
-                # Use post title and content to find relevant context
+                # Step 4: Get relevant context using Haystack semantic search
                 search_text = f"{post_data.title} {post_data.content}"
-                context_chunks = await self._get_relevant_context(organization_id, search_text)
+                context_chunks = await self._get_relevant_context_haystack(organization_id, search_text)
                 context_content = "\n\n".join([chunk["content"] for chunk in context_chunks])
                 
                 if not context_content.strip():
@@ -105,11 +100,12 @@ class PostingService:
                     "target": target.model_dump(),
                     "response": response.model_dump(),
                     "context_chunks_used": len(context_chunks),
-                    "subreddit": post_data.subreddit
+                    "subreddit": post_data.subreddit,
+                    "rag_method": "haystack_semantic_search"
                 }
                 
-                self.logger.info(f"Generated response for {target.response_type} on post {post_id}")
-                return True, f"Generated {target.response_type} response", result
+                self.logger.info(f"Generated response for {target.response_type} on post {post_id} using Haystack RAG")
+                return True, f"Generated {target.response_type} response using Haystack RAG", result
                 
         except Exception as e:
             self.logger.error(f"Error analyzing and generating response for post {post_id}: {str(e)}")
@@ -146,7 +142,8 @@ class PostingService:
                     "response_content": response_content,
                     "posted_at": get_current_timestamp(),
                     "reddit_response": result,
-                    "success": True
+                    "success": True,
+                    "rag_enabled": True
                 }
                 
                 self.json_storage.update_item("posted_responses.json", log_entry)
@@ -163,7 +160,8 @@ class PostingService:
                 "response_content": response_content,
                 "posted_at": get_current_timestamp(),
                 "error": str(e),
-                "success": False
+                "success": False,
+                "rag_enabled": True
             }
             
             self.json_storage.update_item("posted_responses.json", log_entry)
@@ -171,33 +169,27 @@ class PostingService:
             self.logger.error(f"Error posting {response_type} to {target_id}: {str(e)}")
             return False, f"Error posting response: {str(e)}", None
     
-    async def _get_relevant_context(
+    async def _get_relevant_context_haystack(
         self,
         organization_id: str,
         search_text: str,
         top_k: int = 5
     ) -> List[Dict[str, Any]]:
-        """Get relevant context chunks from vector storage."""
+        """Get relevant context chunks using Haystack semantic search."""
         try:
-            # Generate embedding for search text
-            from src.clients.embedding_client import EmbeddingClient
-            embedding_client = EmbeddingClient()
-            
-            query_embedding = await embedding_client.generate_text_embedding(search_text)
-            if not query_embedding:
-                return []
-            
-            # Query vector storage
+            # Use Haystack vector storage for semantic search
             results = self.vector_storage.query_documents(
                 org_id=organization_id,
-                query_embedding=query_embedding,
+                query=search_text,
+                method="semantic",
                 top_k=top_k
             )
             
+            self.logger.info(f"Retrieved {len(results)} relevant chunks using Haystack semantic search")
             return results
             
         except Exception as e:
-            self.logger.error(f"Error getting relevant context: {str(e)}")
+            self.logger.error(f"Error getting relevant context with Haystack: {str(e)}")
             return []
     
     async def _select_response_target(
@@ -261,7 +253,7 @@ class PostingService:
         subreddit: str,
         tone: str
     ) -> Optional[GeneratedResponse]:
-        """Generate the actual response content using LLM."""
+        """Generate the actual response content using LLM with Haystack context."""
         try:
             prompt = format_prompt(
                 REDDIT_RESPONSE_GENERATION_PROMPT,
