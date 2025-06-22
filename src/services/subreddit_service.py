@@ -9,6 +9,8 @@ from typing import List, Tuple
 from src.clients.reddit_client import RedditClient
 from src.clients.llm_client import LLMClient
 from src.storage.vector_storage import VectorStorage
+from src.storage.json_storage import JsonStorage
+from src.models.common import generate_id, get_current_timestamp
 from src.prompts import TOPIC_EXTRACTION_PROMPT, SUBREDDIT_RANKING_PROMPT
 from src.utils.text_utils import format_prompt
 
@@ -22,13 +24,19 @@ class SubredditService:
         self, 
         reddit_client: RedditClient, 
         llm_client: LLMClient,
-        vector_storage: VectorStorage
+        vector_storage: VectorStorage,
+        json_storage: JsonStorage
     ):
         """Initialize the subreddit service."""
         self.reddit_client = reddit_client
         self.llm_client = llm_client
         self.vector_storage = vector_storage
+        self.json_storage = json_storage
         self.logger = logger
+        
+        # Initialize JSON storage files
+        self.json_storage.init_file("discovered_subreddits.json", [])
+        self.json_storage.init_file("extracted_topics.json", [])
     
     async def discover_and_rank_subreddits(
         self,
@@ -105,6 +113,25 @@ class SubredditService:
             
             method = "haystack_rag_ranking_parallel" if context_content else "subscriber_count_fallback"
             self.logger.info(f"Ranked {len(ranked_subreddits)} subreddits using {method}")
+            
+            # Save discovered subreddits to JSON
+            discovery_record = {
+                "id": generate_id(),
+                "organization_id": organization_id,
+                "topics": topics,
+                "discovered_subreddits": ranked_subreddits,
+                "subreddit_details": {name: filtered_subreddits[name] for name in ranked_subreddits if name in filtered_subreddits},
+                "discovery_method": method,
+                "use_rag_context": use_rag_context,
+                "context_available": bool(context_content),
+                "total_subreddits_found": len(all_subreddits),
+                "filtered_subreddits_count": len(filtered_subreddits),
+                "final_ranked_count": len(ranked_subreddits),
+                "discovered_at": get_current_timestamp()
+            }
+            
+            self.json_storage.update_item("discovered_subreddits.json", discovery_record)
+            self.logger.info(f"Saved subreddit discovery record with ID: {discovery_record['id']}")
             
             return True, f"Found and ranked {len(ranked_subreddits)} subreddits using parallel Haystack RAG", ranked_subreddits
             
@@ -195,6 +222,24 @@ class SubredditService:
             content = response.get("content", {})
             if isinstance(content, dict) and "topics" in content:
                 topics = content["topics"]
+                
+                # Save extracted topics to JSON
+                extraction_record = {
+                    "id": generate_id(),
+                    "organization_id": organization_id,
+                    "document_ids": document_ids,
+                    "query": query,
+                    "extracted_topics": topics,
+                    "extraction_method": "haystack_rag_parallel",
+                    "context_length": len(context_content),
+                    "topics_count": len(topics),
+                    "llm_usage": response.get("usage", {}),
+                    "extracted_at": get_current_timestamp()
+                }
+                
+                self.json_storage.update_item("extracted_topics.json", extraction_record)
+                self.logger.info(f"Saved topic extraction record with ID: {extraction_record['id']}")
+                
                 self.logger.info(f"Extracted {len(topics)} topics using parallel Haystack RAG")
                 return True, f"Extracted {len(topics)} topics from documents using parallel processing", topics
             
@@ -390,3 +435,53 @@ class SubredditService:
         except Exception as e:
             self.logger.error(f"Error in batch subreddit discovery: {str(e)}")
             return False, f"Error in batch discovery: {str(e)}", {}
+    
+    def get_discovery_history(
+        self,
+        organization_id: str = None,
+        limit: int = 50
+    ) -> List[dict]:
+        """Get history of subreddit discoveries."""
+        try:
+            all_discoveries = self.json_storage.load_data("discovered_subreddits.json")
+            
+            # Filter by organization if specified
+            if organization_id:
+                all_discoveries = [
+                    d for d in all_discoveries 
+                    if d.get("organization_id") == organization_id
+                ]
+            
+            # Sort by discovery time (most recent first)
+            all_discoveries.sort(key=lambda x: x.get("discovered_at", 0), reverse=True)
+            
+            return all_discoveries[:limit]
+            
+        except Exception as e:
+            self.logger.error(f"Error getting discovery history: {str(e)}")
+            return []
+    
+    def get_topic_extraction_history(
+        self,
+        organization_id: str = None,
+        limit: int = 50
+    ) -> List[dict]:
+        """Get history of topic extractions."""
+        try:
+            all_extractions = self.json_storage.load_data("extracted_topics.json")
+            
+            # Filter by organization if specified
+            if organization_id:
+                all_extractions = [
+                    e for e in all_extractions 
+                    if e.get("organization_id") == organization_id
+                ]
+            
+            # Sort by extraction time (most recent first)
+            all_extractions.sort(key=lambda x: x.get("extracted_at", 0), reverse=True)
+            
+            return all_extractions[:limit]
+            
+        except Exception as e:
+            self.logger.error(f"Error getting topic extraction history: {str(e)}")
+            return []
