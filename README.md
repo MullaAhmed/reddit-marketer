@@ -15,7 +15,6 @@ A comprehensive Reddit marketing automation system that helps organizations enga
 - **Campaign Management**: Track and manage multiple marketing campaigns
 - **Analytics & Reporting**: Comprehensive analytics for campaign performance
 - **Response Tracking**: Monitor posted responses and avoid duplicate interactions
-- **Complete Example Workflow**: Jupyter notebook demonstrating all features
 
 ## 🏗️ Architecture
 
@@ -23,8 +22,7 @@ A comprehensive Reddit marketing automation system that helps organizations enga
 ```
 app/
 ├── core/                            # Core application functionality
-│   ├── settings.py                  # Centralized configuration
-│   └── dependencies.py              # Service container for dependency injection
+│   └── settings.py                  # Centralized configuration
 ├── services/                        # Business logic layer
 │   ├── campaign_service.py          # Campaign orchestration
 │   ├── document_service.py          # Document processing (RAG)
@@ -53,26 +51,27 @@ app/
 │   ├── text_utils.py               # Text processing utilities
 │   ├── file_utils.py               # File management utilities
 │   └── validator_utils.py          # Data validation utilities
-└── run_example_workflow.ipynb       # Complete example workflow
+└── example_usage.py                 # Complete example workflow
 ```
 
 ### Key Design Principles
 - **Separation of Concerns**: Clear boundaries between business logic and data layers
 - **Unified Services**: Centralized document processing and Reddit operations
 - **Modular Architecture**: Easy to extend and maintain
-- **Clean Dependencies**: Service container for dependency injection
+- **Direct Service Usage**: No dependency injection framework required
 - **Consistent Naming**: Clear and descriptive naming conventions
 
 ## 📋 Workflow
 
 ### 1. Initialize Services
 ```python
-from app.core.dependencies import service_container
+from example_usage import initialize_services
 
-# Get services
-campaign_service = service_container.get_campaign_service()
-document_service = service_container.get_document_service()
-analytics_service = service_container.get_analytics_service()
+# Get all services
+services = initialize_services()
+campaign_service = services['campaign_service']
+document_service = services['document_service']
+analytics_service = services['analytics_service']
 ```
 
 ### 2. Campaign Creation
@@ -94,8 +93,6 @@ success, message, campaign = await campaign_service.create_campaign(
 
 ### 3. Document Ingestion (Multiple Methods)
 ```python
-from app.models.document import DocumentCreateRequest, DocumentIngestURLRequest
-
 # Method 1: Direct content
 documents = [{
     "title": "Python Best Practices",
@@ -204,38 +201,33 @@ success, message, data = await campaign_service.execute_responses(
    REDDIT_CLIENT_SECRET=your_reddit_client_secret
    ```
 
-## 📓 Example Workflow
+## 📓 Example Usage
 
-### Complete Jupyter Notebook
-The repository includes `run_example_workflow.ipynb` - a comprehensive Jupyter notebook that demonstrates the entire workflow:
+### Complete Example Script
+The repository includes `example_usage.py` - a comprehensive script that demonstrates the entire workflow:
 
 ```bash
-# Install Jupyter if needed
-pip install jupyter
-
 # Run the example workflow
-jupyter notebook run_example_workflow.ipynb
+python example_usage.py
 ```
 
-### What the Notebook Demonstrates
+### What the Example Demonstrates
 1. **Setup & Configuration** - Environment validation and service initialization
 2. **Organization Setup** - Create and configure an organization
-3. **Document Ingestion** - All three methods:
+3. **Document Ingestion** - Multiple methods:
    - Direct content input
-   - Simulated file upload
    - URL scraping with web scraper
 4. **Campaign Creation** - Create and configure a marketing campaign
-5. **Subreddit Discovery** - AI-powered topic extraction and subreddit finding
-6. **Post Discovery** - Find relevant posts in target subreddits
-7. **Response Generation** - AI-generated contextual responses
-8. **Response Execution** - Post responses to Reddit (with safety controls)
-9. **Analytics & Reporting** - Comprehensive performance analysis
+5. **Topic Discovery** - AI-powered topic extraction
+6. **LLM Testing** - Test AI response generation
+7. **Subreddit Search** - Find relevant communities
+8. **Analytics & Reporting** - Performance analysis
 
-### Safety Features in Notebook
-- **Reddit Posting Control**: `ACTUALLY_POST_TO_REDDIT = False` prevents accidental posting
+### Safety Features
+- **Reddit Posting Control**: Example doesn't actually post to Reddit
 - **Credential Validation**: Checks for required API keys
 - **Error Handling**: Graceful handling of API failures
-- **Independent Cells**: Each step can be run independently
+- **Resource Cleanup**: Proper cleanup of connections
 
 ## 🌐 Web Scraping Capabilities
 
@@ -246,9 +238,10 @@ jupyter notebook run_example_workflow.ipynb
 
 ### URL Ingestion Example
 ```python
-from app.core.dependencies import service_container
+from example_usage import initialize_services
 
-document_service = service_container.get_document_service()
+services = initialize_services()
+document_service = services['document_service']
 
 success, message, doc_id = await document_service.ingest_document_from_url(
     url="https://example.com/article",
@@ -341,16 +334,17 @@ reddit_credentials = {
 
 ## 📝 Usage Examples
 
-### Service Container Usage
+### Service Initialization
 ```python
-from app.core.dependencies import service_container
+from example_usage import initialize_services
 
 # Get all services
-campaign_service = service_container.get_campaign_service()
-document_service = service_container.get_document_service()
-reddit_service = service_container.get_reddit_service()
-llm_service = service_container.get_llm_service()
-analytics_service = service_container.get_analytics_service()
+services = initialize_services()
+campaign_service = services['campaign_service']
+document_service = services['document_service']
+reddit_service = services['reddit_service']
+llm_service = services['llm_service']
+analytics_service = services['analytics_service']
 ```
 
 ### Document Ingestion
@@ -455,17 +449,20 @@ The system tracks:
 
 ### Service Testing
 ```python
-from app.core.dependencies import service_container
+from example_usage import initialize_services
+
+# Initialize services
+services = initialize_services()
 
 # Test document ingestion
-document_service = service_container.get_document_service()
+document_service = services['document_service']
 success, message, doc_ids = document_service.ingest_documents(
     documents=[{"title": "Test", "content": "Test content"}],
     org_id="test-org"
 )
 
 # Test campaign creation
-campaign_service = service_container.get_campaign_service()
+campaign_service = services['campaign_service']
 from app.models.campaign import CampaignCreateRequest, ResponseTone
 
 request = CampaignCreateRequest(
@@ -482,10 +479,7 @@ success, message, campaign = await campaign_service.create_campaign(
 ### Example Workflow Testing
 ```bash
 # Run the complete example workflow
-jupyter notebook run_example_workflow.ipynb
-
-# Or run specific cells interactively
-jupyter notebook run_example_workflow.ipynb
+python example_usage.py
 ```
 
 ## 🤝 Contributing
@@ -501,11 +495,8 @@ jupyter notebook run_example_workflow.ipynb
 # Install development dependencies
 pip install -r requirements.txt
 
-# Install Jupyter for running examples
-pip install jupyter
-
 # Run example workflow
-jupyter notebook run_example_workflow.ipynb
+python example_usage.py
 ```
 
 ## 📄 License
@@ -515,12 +506,13 @@ MIT License - see LICENSE file for details
 ## 🆘 Support
 
 For issues and questions:
-1. Review the example workflow notebook
+1. Review the example workflow script
 2. Check application logs for detailed error information
 3. Create an issue on GitHub with detailed information
 
 ## 🔄 Version History
 
+- **v4.0.0**: Removed dependency injection, pure service instantiation
 - **v3.0.0**: Removed API layer, pure service-based architecture
 - **v2.2.0**: Added URL ingestion capabilities and complete example workflow
 - **v2.1.0**: Added comprehensive analytics and reporting system
@@ -529,4 +521,4 @@ For issues and questions:
 
 ---
 
-**Note**: This system is designed for legitimate marketing purposes. Always follow Reddit's community guidelines and terms of service. The example workflow notebook provides a safe way to test all features before using them in production.
+**Note**: This system is designed for legitimate marketing purposes. Always follow Reddit's community guidelines and terms of service. The example workflow provides a safe way to test all features before using them in production.

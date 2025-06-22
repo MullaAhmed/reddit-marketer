@@ -1,5 +1,5 @@
 """
-Campaign orchestration service - Updated to use analytics service.
+Campaign orchestration service - Updated to work without dependencies.py.
 """
 
 import asyncio
@@ -13,10 +13,6 @@ from app.models.campaign import (
     ResponseGenerationRequest, ResponseExecutionRequest,
     TargetPost, PlannedResponse, PostedResponse, ResponseType
 )
-from app.services.document_service import DocumentService
-from app.services.reddit_service import RedditService
-from app.services.llm_service import LLMService
-from app.managers.campaign_manager import CampaignManager
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +25,10 @@ class CampaignService:
     
     def __init__(
         self,
-        campaign_manager: CampaignManager,
-        document_service: DocumentService,
-        reddit_service: RedditService,
-        llm_service: LLMService
+        campaign_manager,
+        document_service,
+        reddit_service,
+        llm_service
     ):
         """Initialize the campaign service."""
         self.campaign_manager = campaign_manager

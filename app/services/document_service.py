@@ -1,5 +1,5 @@
 """
-Document processing service using RAG.
+Document processing service using RAG - Updated to work without dependencies.py.
 """
 
 import logging
@@ -10,9 +10,6 @@ from typing import List, Dict, Any, Tuple, Optional
 from app.models.document import (
     Organization, Document, DocumentQuery, DocumentResponse, QueryResponse
 )
-from app.managers.document_manager import DocumentManager
-from app.storage.vector_storage import VectorStorage
-from app.services.scraper_service import WebScraperService
 from app.utils.text_utils import chunk_text, clean_text
 from app.utils.validator_utils import is_valid_url
 
@@ -27,9 +24,9 @@ class DocumentService:
     
     def __init__(
         self,
-        document_manager: DocumentManager,
-        vector_storage: VectorStorage,
-        web_scraper_service: WebScraperService
+        document_manager,
+        vector_storage,
+        web_scraper_service
     ):
         """Initialize the document service."""
         self.document_manager = document_manager
