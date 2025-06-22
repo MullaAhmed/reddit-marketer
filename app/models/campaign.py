@@ -166,9 +166,15 @@ class CampaignCreateRequest(BaseModel):
 
 
 class SubredditDiscoveryRequest(BaseModel):
-    """Request model for discovering subreddits"""
+    """Request model for discovering topics from documents"""
     
-    document_ids: List[str] = Field(..., min_items=1, description="Document IDs to use for subreddit discovery")
+    document_ids: List[str] = Field(..., min_items=1, description="Document IDs to use for topic extraction")
+
+
+class SubredditDiscoveryByTopicsRequest(BaseModel):
+    """Request model for discovering subreddits based on topics"""
+    
+    topics: List[str] = Field(..., min_items=1, description="Topics to use for subreddit discovery")
 
 
 class PostDiscoveryRequest(BaseModel):

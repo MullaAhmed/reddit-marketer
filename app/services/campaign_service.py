@@ -2,13 +2,14 @@
 Campaign orchestration service - Updated to use analytics service.
 """
 
+import asyncio
 import logging
 from typing import Dict, List, Any, Tuple, Optional
 from datetime import datetime, timezone
 
 from app.models.campaign import (
     Campaign, CampaignStatus, CampaignCreateRequest,
-    SubredditDiscoveryRequest, PostDiscoveryRequest,
+    SubredditDiscoveryRequest, SubredditDiscoveryByTopicsRequest, PostDiscoveryRequest,
     ResponseGenerationRequest, ResponseExecutionRequest,
     TargetPost, PlannedResponse, PostedResponse, ResponseType
 )
@@ -103,7 +104,7 @@ class CampaignService:
         return self.campaign_manager.save_campaign(campaign)
     
     # ========================================
-    # SUBREDDIT DISCOVERY
+    # TOPIC DISCOVERY
     # ========================================
     
     async def discover_topics(
@@ -135,24 +136,54 @@ class CampaignService:
             if not success:
                 return False, f"Topic extraction failed: {message}", None
             
-            return campaign, campaign_context, topics
+            # Update campaign with selected documents and status
+            campaign.selected_document_ids = request.document_ids
+            campaign.status = CampaignStatus.DOCUMENTS_UPLOADED
+            
+            if not self._update_campaign(campaign):
+                return False, "Failed to update campaign", None
+            
+            self.logger.info(f"Extracted {len(topics)} topics for campaign {campaign_id}")
+            
+            return True, f"Extracted {len(topics)} topics from {len(request.document_ids)} documents", {
+                "topics": topics,
+                "selected_document_ids": request.document_ids,
+                "total_topics": len(topics)
+            }
+            
         except Exception as e:
             self.logger.error(f"Error extracting topics for campaign {campaign_id}: {str(e)}")
             return False, f"Error extracting topics: {str(e)}", None
     
+    # ========================================
+    # SUBREDDIT DISCOVERY
+    # ========================================
+    
     async def discover_subreddits(
         self, 
-        campaign: Campaign, 
-        topics:str,
-        campaign_context:str,
-
-        request: SubredditDiscoveryRequest
+        campaign_id: str, 
+        request: SubredditDiscoveryByTopicsRequest
     ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
-        """Discover relevant subreddits based on selected documents."""
+        """Discover relevant subreddits based on provided topics."""
         try:
-            # Discover subreddits using Reddit service with extracted topics
+            # Get campaign
+            campaign = self.campaign_manager.get_campaign(campaign_id)
+            if not campaign:
+                return False, "Campaign not found", None
+            
+            # Ensure campaign has documents selected
+            if not campaign.selected_document_ids:
+                return False, "Campaign must have documents selected before subreddit discovery", None
+            
+            # Get campaign context for ranking
+            campaign_context = await self._get_relevant_campaign_context(
+                campaign.organization_id, 
+                campaign.selected_document_ids
+            )
+            
+            # Discover subreddits using Reddit service with provided topics
             success, message, discovery_data = await self.reddit_service.discover_subreddits_by_topics(
-                topics=topics,
+                topics=request.topics,
                 organization_id=campaign.organization_id,
                 min_subscribers=10000
             )
@@ -183,7 +214,6 @@ class CampaignService:
                 discovery_data["relevant_subreddits"] = {}
             
             # Update campaign with results
-            campaign.selected_document_ids = request.document_ids
             campaign.target_subreddits = list(discovery_data["relevant_subreddits"].keys())
             campaign.status = CampaignStatus.SUBREDDITS_DISCOVERED
             
@@ -194,7 +224,7 @@ class CampaignService:
             
             return True, f"Discovered {len(campaign.target_subreddits)} relevant subreddits", {
                 "subreddits": campaign.target_subreddits,
-                "topics": topics,
+                "topics": request.topics,
                 "total_found": len(discovery_data.get("relevant_subreddits", {}))
             }
             
@@ -249,36 +279,54 @@ class CampaignService:
             if not success:
                 return False, message, None
             
-            # Analyze posts for relevance using LLM service
+            # Analyze posts for relevance using LLM service (parallelized)
             target_posts = []
+            tasks = []
+            posts_to_analyze = []
+            
+            # Create tasks for concurrent post analysis
             for post in posts:
-                try:
-                    success, _, analysis = await self.llm_service.analyze_post_relevance(
-                        post_title=post.get("title", ""),
-                        post_content=post.get("selftext", ""),
-                        campaign_context=campaign_context,
-                        subreddit=post.get("search_subreddit", "")
-                    )
-                    
-                    if success and analysis.get("should_respond") and analysis.get("relevance_score", 0) > 0.3:
-                        target_post = TargetPost(
-                            reddit_post_id=post["id"],
-                            subreddit=post.get("search_subreddit", ""),
-                            title=post.get("title", ""),
-                            content=post.get("selftext", ""),
-                            author=post.get("author", {}).get("name", ""),
-                            score=post.get("score", 0),
-                            num_comments=post.get("num_comments", 0),
-                            created_utc=post.get("created_utc", 0),
-                            permalink=post.get("permalink", ""),
-                            relevance_score=analysis["relevance_score"],
-                            relevance_reason=analysis["relevance_reason"],
-                            response_type=ResponseType.POST_COMMENT
+                posts_to_analyze.append(post)
+                tasks.append(
+                    asyncio.create_task(
+                        self.llm_service.analyze_post_relevance(
+                            post_title=post.get("title", ""),
+                            post_content=post.get("selftext", ""),
+                            campaign_context=campaign_context,
+                            subreddit=post.get("search_subreddit", "")
                         )
-                        target_posts.append(target_post)
-                        
-                except Exception as e:
-                    self.logger.warning(f"Error analyzing post {post.get('id')}: {str(e)}")
+                    )
+                )
+            
+            # Run all analysis tasks concurrently
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Process results
+            for i, result in enumerate(results):
+                post = posts_to_analyze[i]
+                
+                if isinstance(result, Exception):
+                    self.logger.warning(f"Error analyzing post {post.get('id')}: {str(result)}")
+                    continue
+                
+                success, _, analysis = result
+                
+                if success and analysis.get("should_respond") and analysis.get("relevance_score", 0) > 0.3:
+                    target_post = TargetPost(
+                        reddit_post_id=post["id"],
+                        subreddit=post.get("search_subreddit", ""),
+                        title=post.get("title", ""),
+                        content=post.get("selftext", ""),
+                        author=post.get("author", {}).get("name", ""),
+                        score=post.get("score", 0),
+                        num_comments=post.get("num_comments", 0),
+                        created_utc=post.get("created_utc", 0),
+                        permalink=post.get("permalink", ""),
+                        relevance_score=analysis["relevance_score"],
+                        relevance_reason=analysis["relevance_reason"],
+                        response_type=ResponseType.POST_COMMENT
+                    )
+                    target_posts.append(target_post)
             
             # Update campaign
             campaign.target_posts = {post.id: post for post in target_posts}
@@ -321,31 +369,48 @@ class CampaignService:
                 campaign.selected_document_ids
             )
             
-            planned_responses = []
+            tasks = []
+            target_posts_to_process = []
             
-            # Generate responses for each target post
+            # Filter and prepare posts for processing
             for target_post_id in request.target_post_ids:
                 target_post = self._find_target_post(campaign, target_post_id)
                 if not target_post:
                     continue
                 
-                # Check if we already responded to this author
                 if self._already_responded_to_author(campaign, target_post.author):
                     self.logger.info(f"Skipping post by {target_post.author} - already responded")
                     continue
                 
-                # Generate response using LLM service
-                success, _, response_data = await self.llm_service.generate_reddit_response(
-                    post_title=target_post.title,
-                    post_content=target_post.content,
-                    campaign_context=campaign_context,
-                    tone=(request.tone or campaign.response_tone).value,
-                    subreddit=target_post.subreddit
+                target_posts_to_process.append(target_post)
+                tasks.append(
+                    asyncio.create_task(
+                        self.llm_service.generate_reddit_response(
+                            post_title=target_post.title,
+                            post_content=target_post.content,
+                            campaign_context=campaign_context,
+                            tone=(request.tone or campaign.response_tone).value,
+                            subreddit=target_post.subreddit
+                        )
+                    )
                 )
+            
+            # Run all LLM generation tasks concurrently
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            planned_responses = []
+            for i, result in enumerate(results):
+                target_post = target_posts_to_process[i]
+                
+                if isinstance(result, Exception):
+                    self.logger.error(f"Error generating response for post {target_post.id}: {str(result)}")
+                    continue # Skip this post if generation failed
+                
+                success, _, response_data = result # Unpack the tuple from the LLM service call
                 
                 if success and response_data:
                     planned_response = PlannedResponse(
-                        target_post_id=target_post_id,
+                        target_post_id=target_post.id,
                         response_content=response_data["content"],
                         response_type=target_post.response_type,
                         relevant_documents=campaign.selected_document_ids,
@@ -388,9 +453,10 @@ class CampaignService:
             if not campaign:
                 return False, "Campaign not found", None
             
-            posted_responses = []
+            tasks = []
+            planned_responses_to_execute = []
             
-            # Execute each planned response
+            # Filter and prepare responses for execution
             for planned_response_id in request.planned_response_ids:
                 planned_response = self._find_planned_response(campaign, planned_response_id)
                 if not planned_response:
@@ -400,25 +466,42 @@ class CampaignService:
                 if not target_post:
                     continue
                 
-                # Post the response using Reddit service
-                success, message, result = await self.reddit_service.post_response(
-                    post_id=target_post.reddit_post_id,
-                    response_content=planned_response.response_content,
-                    reddit_credentials=request.reddit_credentials,
-                    response_type=planned_response.response_type.value
+                planned_responses_to_execute.append((planned_response, target_post))
+                tasks.append(
+                    asyncio.create_task(
+                        self.reddit_service.post_response(
+                            post_id=target_post.reddit_post_id,
+                            response_content=planned_response.response_content,
+                            reddit_credentials=request.reddit_credentials,
+                            response_type=planned_response.response_type.value
+                        )
+                    )
                 )
+            
+            # Run all Reddit posting tasks concurrently
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            posted_responses = []
+            for i, result in enumerate(results):
+                planned_response, target_post = planned_responses_to_execute[i]
                 
-                # Create posted response record
+                if isinstance(result, Exception):
+                    self.logger.error(f"Error posting response for planned_response_id {planned_response.id}: {str(result)}")
+                    success = False
+                    message = str(result)
+                    result_data = {}
+                else:
+                    success, message, result_data = result # Unpack the tuple from the reddit service call
+                
                 posted_response = PostedResponse(
                     planned_response_id=planned_response.id,
                     target_post_id=planned_response.target_post_id,
-                    reddit_comment_id=result.get("id", "") if success else "",
-                    reddit_permalink=result.get("permalink", "") if success else "",
+                    reddit_comment_id=result_data.get("id", "") if success else "",
+                    reddit_permalink=result_data.get("permalink", "") if success else "",
                     posted_content=planned_response.response_content,
                     posting_successful=success,
                     error_message=message if not success else None
                 )
-                
                 posted_responses.append(posted_response)
             
             # Update campaign

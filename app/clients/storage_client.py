@@ -67,7 +67,7 @@ class VectorStorageClient:
         if embedder_key not in self._embedders:
             self._embedders[embedder_key] = OpenAITextEmbedder(
                 model=model,
-                api_key=settings.OPENAI_API_KEY
+                api_key=Secret.from_token(settings.OPENAI_API_KEY)
             )
         return self._embedders[embedder_key]
     
