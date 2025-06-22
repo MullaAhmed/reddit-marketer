@@ -12,8 +12,9 @@ google-genai
 # Reddit API
 asyncpraw
 
-# Vector storage
-chromadb
+# Haystack RAG framework
+haystack-ai
+haystack-integrations[chroma]
 
 # Web scraping
 requests
