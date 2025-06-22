@@ -99,7 +99,7 @@ class VectorStorage:
         Args:
             org_id: Organization ID
             query: Search query
-            method: Retrieval method ("semantic" or "keyword")
+            method: Retrieval method ("semantic")
             top_k: Number of results to return
             filters: Metadata filters
             
@@ -114,13 +114,7 @@ class VectorStorage:
                     top_k=top_k,
                     filters=filters
                 )
-            elif method == "keyword":
-                documents = self.haystack_client.query_documents_keyword(
-                    org_id=org_id,
-                    query=query,
-                    top_k=top_k,
-                    filters=filters
-                )
+
             else:
                 raise ValueError(f"Unsupported search method: {method}")
             

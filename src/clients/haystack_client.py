@@ -88,18 +88,6 @@ class HaystackClient:
         self._retrievers[cache_key] = retriever
         return retriever
     
-    def get_query_text_retriever(self, org_id: str) -> ChromaQueryTextRetriever:
-        """Get or create ChromaQueryTextRetriever for keyword search."""
-        cache_key = f"{org_id}_query_text"
-        
-        if cache_key in self._query_text_retrievers:
-            return self._query_text_retrievers[cache_key]
-        
-        document_store = self.get_document_store(org_id)
-        retriever = ChromaQueryTextRetriever(document_store=document_store)
-        
-        self._query_text_retrievers[cache_key] = retriever
-        return retriever
     
     def store_documents(
         self, 
@@ -170,36 +158,6 @@ class HaystackClient:
             self.logger.error(f"Error in semantic search for org {org_id}: {str(e)}")
             return []
     
-    def query_documents_keyword(
-        self,
-        org_id: str,
-        query: str,
-        top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[Document]:
-        """Query documents using keyword search."""
-        try:
-            # Format filters for ChromaDB
-            formatted_filters = None
-            if filters:
-                formatted_filters = self._format_filters_for_chroma(filters)
-            
-            # Use ChromaQueryTextRetriever
-            retriever = self.get_query_text_retriever(org_id)
-            
-            # Perform keyword search
-            result = retriever.run(
-                query=query,
-                top_k=top_k,
-                filters=formatted_filters
-            )
-            
-            return result["documents"]
-            
-        except Exception as e:
-            self.logger.error(f"Error in keyword search for org {org_id}: {str(e)}")
-            # Fallback to semantic search
-            return self.query_documents_semantic(org_id, query, top_k, filters)
     
     def get_documents_by_filters(
         self,
@@ -300,7 +258,7 @@ class HaystackClient:
             
             # If it's a simple value (string, int, float, bool), use direct format
             if isinstance(value, (str, int, float, bool)):
-                return {key: value}
+                return {{key: {"$eq": value}}}
             elif isinstance(value, list):
                 return {key: {"$in": value}}
             elif isinstance(value, dict) and any(op in value for op in ["$eq", "$ne", "$in", "$nin", "$gt", "$gte", "$lt", "$lte"]):
@@ -308,7 +266,7 @@ class HaystackClient:
                 return {key: value}
             else:
                 # Convert to string and use direct format
-                return {key: str(value)}
+                return {key: {"$eq": str(value)}}
         else:
             # Multiple filters - use $and operator with explicit conditions
             conditions = []

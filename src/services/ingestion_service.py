@@ -54,7 +54,9 @@ class IngestionService:
         try:
             # If it's a URL, scrape the content
             if is_url:
-                scraped_content = await self._scrape_url(content)
+                url = content
+                scraped_content = await self._scrape_url(url)
+
                 if not scraped_content:
                     return False, f"Failed to scrape content from URL: {content}", None
                 content = scraped_content
@@ -75,13 +77,14 @@ class IngestionService:
                 organization_id=organization_id,
                 metadata={
                     "source": "url" if is_url else "direct",
-                    "original_url": content if is_url else None,
                     "ingestion_method": "haystack_rag"
                 },
                 content_length=len(clean_content),
                 chunk_count=0,
                 created_at=timestamp
             )
+            if is_url:
+                document.metadata["original_url"] = url
             
             # Chunk the content using configured settings
             chunk_size = chunk_size or settings.CHUNK_SIZE

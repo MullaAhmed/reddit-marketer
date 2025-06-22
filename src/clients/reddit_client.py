@@ -227,7 +227,7 @@ class RedditClient:
             self.logger.error(f"Error getting comment info for {comment_id}: {str(e)}")
             raise
     
-    async def add_comment_to_post(self, post_id: str, comment_text: str) -> Dict[str, Any]:
+    async def add_comment_to_post(self, comment_text: str, post_id: Optional[str] = None, post_url:Optional[str] = None) -> Dict[str, Any]:
         """Add a comment to a Reddit post."""
         await self._initialize_reddit()
         
@@ -235,7 +235,12 @@ class RedditClient:
             raise Exception("Authentication required to post comments")
         
         try:
-            submission = await self._reddit_instance.submission(id=post_id)
+
+            if post_id:
+                submission = await self._reddit_instance.submission(id=post_id)
+            elif post_url:
+                submission = await self._reddit_instance.submission(url=post_url)
+                
             comment = await submission.reply(comment_text)
             
             return {
@@ -250,7 +255,7 @@ class RedditClient:
             self.logger.error(f"Error adding comment to post {post_id}: {str(e)}")
             raise
     
-    async def reply_to_comment(self, comment_id: str, reply_text: str) -> Dict[str, Any]:
+    async def reply_to_comment(self, reply_text: str, comment_id: Optional[str] = None, comment_url: Optional[str] = None) -> Dict[str, Any]:
         """Reply to an existing Reddit comment."""
         await self._initialize_reddit()
         
@@ -258,7 +263,10 @@ class RedditClient:
             raise Exception("Authentication required to post replies")
         
         try:
-            comment = await self._reddit_instance.comment(id=comment_id)
+            if comment_id:
+                comment = await self._reddit_instance.comment(id=comment_id)
+            elif comment_url:
+                comment = await self._reddit_instance.comment(url=comment_url)
             reply = await comment.reply(reply_text)
             
             return {

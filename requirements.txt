@@ -14,8 +14,8 @@ asyncpraw
 
 # Haystack RAG framework
 haystack-ai
-haystack-integrations[chroma]
 
+chroma-haystack
 # Web scraping
 requests
 beautifulsoup4

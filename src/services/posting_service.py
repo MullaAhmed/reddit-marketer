@@ -113,9 +113,10 @@ class PostingService:
     
     async def post_approved_response(
         self,
-        target_id: str,
         response_type: str,
-        response_content: str
+        response_content: str,
+        target_id: Optional[str] = None,
+        target_url: Optional[str] = None
     ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
         """
         Post an approved response to Reddit.
@@ -126,11 +127,12 @@ class PostingService:
             response_content: The response text to post
         """
         try:
+
             async with self.reddit_client:
                 if response_type == "post_comment":
-                    result = await self.reddit_client.add_comment_to_post(target_id, response_content)
+                    result = await self.reddit_client.add_comment_to_post(response_content, target_id, target_url)
                 elif response_type == "comment_reply":
-                    result = await self.reddit_client.reply_to_comment(target_id, response_content)
+                    result = await self.reddit_client.reply_to_comment(response_content, target_id, target_url)
                 else:
                     return False, f"Invalid response type: {response_type}", None
                 
@@ -234,7 +236,7 @@ class PostingService:
             
             # Create ResponseTarget object
             target = ResponseTarget(
-                target_id=content.get("target_id", post_data.id),
+                target_id= post_data.id,
                 response_type=content.get("response_type", "post_comment"),
                 target_content=content.get("target_content", post_data.content),
                 reasoning=content.get("reasoning", "Default selection")
