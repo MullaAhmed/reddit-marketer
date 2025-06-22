@@ -53,24 +53,26 @@ class HaystackClient:
         return document_store
     
     def get_document_embedder(self, model: str = None) -> OpenAIDocumentEmbedder:
-        """Get or create document embedder."""
+        """Get or create document embedder with explicit dimensions."""
         model = model or settings.EMBEDDING_MODEL
         
         if model not in self._embedders:
             self._embedders[model] = OpenAIDocumentEmbedder(
                 model=model,
+                dimensions=3072,  # Explicitly set dimensions for text-embedding-3-large
                 api_key=Secret.from_token(settings.OPENAI_API_KEY)
             )
         return self._embedders[model]
     
     def get_text_embedder(self, model: str = None) -> OpenAITextEmbedder:
-        """Get or create text embedder."""
+        """Get or create text embedder with explicit dimensions."""
         model = model or settings.EMBEDDING_MODEL
         embedder_key = f"text_{model}"
         
         if embedder_key not in self._embedders:
             self._embedders[embedder_key] = OpenAITextEmbedder(
                 model=model,
+                dimensions=3072,  # Explicitly set dimensions for text-embedding-3-large
                 api_key=Secret.from_token(settings.OPENAI_API_KEY)
             )
         return self._embedders[embedder_key]
@@ -89,14 +91,21 @@ class HaystackClient:
         return retriever
     
     def get_query_text_retriever(self, org_id: str) -> ChromaQueryTextRetriever:
-        """Get or create ChromaQueryTextRetriever for keyword search."""
+        """Get or create ChromaQueryTextRetriever for keyword search with proper embedding config."""
         cache_key = f"{org_id}_query_text"
         
         if cache_key in self._query_text_retrievers:
             return self._query_text_retrievers[cache_key]
         
         document_store = self.get_document_store(org_id)
-        retriever = ChromaQueryTextRetriever(document_store=document_store)
+        
+        # Create ChromaQueryTextRetriever with explicit embedding configuration
+        # to ensure it uses the same embedding model and dimensions
+        retriever = ChromaQueryTextRetriever(
+            document_store=document_store,
+            # Pass the text embedder to ensure consistent embedding dimensions
+            embedder=self.get_text_embedder()
+        )
         
         self._query_text_retrievers[cache_key] = retriever
         return retriever
@@ -177,14 +186,14 @@ class HaystackClient:
         top_k: int = 5,
         filters: Optional[Dict[str, Any]] = None
     ) -> List[Document]:
-        """Query documents using keyword search."""
+        """Query documents using keyword search with consistent embedding dimensions."""
         try:
             # Format filters for ChromaDB
             formatted_filters = None
             if filters:
                 formatted_filters = self._format_filters_for_chroma(filters)
             
-            # Use ChromaQueryTextRetriever
+            # Use ChromaQueryTextRetriever with proper embedding configuration
             retriever = self.get_query_text_retriever(org_id)
             
             # Perform keyword search
@@ -198,7 +207,8 @@ class HaystackClient:
             
         except Exception as e:
             self.logger.error(f"Error in keyword search for org {org_id}: {str(e)}")
-            # Fallback to semantic search
+            # Fallback to semantic search if keyword search fails
+            self.logger.info(f"Falling back to semantic search for org {org_id}")
             return self.query_documents_semantic(org_id, query, top_k, filters)
     
     def get_documents_by_filters(
