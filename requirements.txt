@@ -1,22 +1,24 @@
+# Core dependencies
 fastapi
 uvicorn
 pydantic
 pydantic-settings
-haystack-ai
-chroma-haystack
+
+# LLM clients
 openai
-sentence-transformers
-chroma-hnswlib
-jinja2
-python-dotenv
-pypdf
-beautifulsoup4
-requests
-python-multipart
-asyncpraw
-aiohttp
-aiofiles
 groq
 google-genai
-langsmith
+
+# Reddit API
+asyncpraw
+
+# Vector storage
+chromadb
+
+# Web scraping
+requests
+beautifulsoup4
 firecrawl-py
+
+# Utilities
+python-dotenv
