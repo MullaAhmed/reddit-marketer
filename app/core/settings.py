@@ -7,7 +7,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-load_dotenv(dotenv_path=".env",override=True)
+load_dotenv(dotenv_path=".env", override=True)
 
 
 class OpenAIConfig:
@@ -56,7 +56,6 @@ class Settings(BaseSettings):
 
     # Application
     PROJECT_NAME: str = "Reddit Marketing AI Agent"
-    API_BASE_URL: str = "/api/v1"
     
     # API Keys
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")

@@ -22,31 +22,21 @@ A comprehensive Reddit marketing automation system that helps organizations enga
 ### Clean, Modular Structure
 ```
 app/
-├── main.py                           # Single application entry point
 ├── core/                            # Core application functionality
 │   ├── settings.py                  # Centralized configuration
-│   ├── dependencies.py              # FastAPI dependencies
-│   └── middleware.py                # Application middleware
-├── api/                             # Unified API layer
-│   ├── router.py                    # Main API router
-│   └── endpoints/                   # All API endpoints
-│       ├── campaigns.py             # Campaign management endpoints
-│       ├── documents.py             # Document management endpoints
-│       ├── subreddits.py           # Subreddit discovery endpoints
-│       ├── analytics.py            # Analytics endpoints
-│       └── health.py               # Health check endpoints
+│   └── dependencies.py              # Service container for dependency injection
 ├── services/                        # Business logic layer
 │   ├── campaign_service.py          # Campaign orchestration
 │   ├── document_service.py          # Document processing (RAG)
 │   ├── reddit_service.py            # Reddit operations
 │   ├── llm_service.py              # LLM interactions
 │   ├── analytics_service.py        # Analytics and reporting
-│   └── web_scraper.py              # Web scraping service
+│   └── scraper_service.py          # Web scraping service
 ├── models/                          # Data models
 │   ├── campaign.py                  # Campaign-related models
 │   ├── document.py                  # Document-related models
 │   ├── reddit.py                    # Reddit-related models
-│   └── common.py                    # Shared models (health status)
+│   └── common.py                    # Shared models
 ├── clients/                         # External service clients
 │   ├── reddit_client.py             # Reddit API client
 │   ├── llm_client.py               # LLM provider clients
@@ -62,118 +52,131 @@ app/
 ├── utils/                           # Utility functions
 │   ├── text_utils.py               # Text processing utilities
 │   ├── file_utils.py               # File management utilities
-│   ├── validator_utils.py          # Data validation utilities
-│   └── web_scraper.py              # Web scraping utilities
+│   └── validator_utils.py          # Data validation utilities
 └── run_example_workflow.ipynb       # Complete example workflow
 ```
 
 ### Key Design Principles
-- **Separation of Concerns**: Clear boundaries between API, business logic, and data layers
+- **Separation of Concerns**: Clear boundaries between business logic and data layers
 - **Unified Services**: Centralized document processing and Reddit operations
 - **Modular Architecture**: Easy to extend and maintain
-- **Clean Dependencies**: Minimal coupling between components
+- **Clean Dependencies**: Service container for dependency injection
 - **Consistent Naming**: Clear and descriptive naming conventions
 
 ## 📋 Workflow
 
-### 1. Campaign Creation
+### 1. Initialize Services
 ```python
+from app.core.dependencies import service_container
+
+# Get services
+campaign_service = service_container.get_campaign_service()
+document_service = service_container.get_document_service()
+analytics_service = service_container.get_analytics_service()
+```
+
+### 2. Campaign Creation
+```python
+from app.models.campaign import CampaignCreateRequest, ResponseTone
+
 create_request = CampaignCreateRequest(
     name="Python Learning Community Outreach",
     description="Engage with Python learning communities",
     response_tone=ResponseTone.HELPFUL,
     max_responses_per_day=5
 )
+
+success, message, campaign = await campaign_service.create_campaign(
+    organization_id="org-1",
+    request=create_request
+)
 ```
 
-### 2. Document Ingestion (Multiple Methods)
+### 3. Document Ingestion (Multiple Methods)
 ```python
+from app.models.document import DocumentCreateRequest, DocumentIngestURLRequest
+
 # Method 1: Direct content
-doc_request = DocumentCreateRequest(
-    title="Python Best Practices",
-    content="Your content here...",
-    metadata={"category": "programming"}
+documents = [{
+    "title": "Python Best Practices",
+    "content": "Your content here...",
+    "metadata": {"category": "programming"}
+}]
+
+success, message, document_ids = document_service.ingest_documents(
+    documents=documents,
+    org_id="org-1"
 )
 
 # Method 2: URL scraping
-url_request = DocumentIngestURLRequest(
+success, message, doc_id = await document_service.ingest_document_from_url(
     url="https://example.com/article",
-    title="Article Title",
     organization_id="org-1",
-    scraping_method="auto"  # firecrawl, requests, or auto
+    title="Article Title",
+    scraping_method="auto"
 )
-
-# Method 3: File upload (via API)
-# Upload files through the /documents/upload endpoint
 ```
 
-### 3. Subreddit Discovery
+### 4. Subreddit Discovery
 ```python
+from app.models.campaign import SubredditDiscoveryRequest
+
 subreddit_request = SubredditDiscoveryRequest(
     document_ids=["doc-1", "doc-2"]
 )
-```
 
-### 4. Post Discovery
-```python
-post_request = PostDiscoveryRequest(
-    subreddits=["python", "learnpython"],
-    max_posts_per_subreddit=10,
-    time_filter="day"
+success, message, data = await campaign_service.discover_topics(
+    campaign_id=campaign.id,
+    request=subreddit_request
 )
 ```
 
-### 5. Response Generation
+### 5. Post Discovery
 ```python
+from app.models.campaign import PostDiscoveryRequest
+
+post_request = PostDiscoveryRequest(
+    subreddits=["python", "learnpython"],
+    max_posts_per_subreddit=10,
+    time_filter="day",
+    reddit_credentials=reddit_creds
+)
+
+success, message, data = await campaign_service.discover_posts(
+    campaign_id=campaign.id,
+    request=post_request
+)
+```
+
+### 6. Response Generation
+```python
+from app.models.campaign import ResponseGenerationRequest
+
 response_request = ResponseGenerationRequest(
     target_post_ids=["post-1", "post-2"],
     tone=ResponseTone.HELPFUL
 )
+
+success, message, data = await campaign_service.generate_responses(
+    campaign_id=campaign.id,
+    request=response_request
+)
 ```
 
-### 6. Response Execution
+### 7. Response Execution
 ```python
+from app.models.campaign import ResponseExecutionRequest
+
 execution_request = ResponseExecutionRequest(
     planned_response_ids=["response-1", "response-2"],
     reddit_credentials=reddit_creds
 )
+
+success, message, data = await campaign_service.execute_responses(
+    campaign_id=campaign.id,
+    request=execution_request
+)
 ```
-
-## 🔧 API Endpoints
-
-### Campaign Management
-- `POST /api/v1/campaigns/` - Create campaign
-- `GET /api/v1/campaigns/{id}` - Get campaign
-- `GET /api/v1/campaigns/` - List campaigns
-
-### Workflow Steps
-- `POST /api/v1/campaigns/{id}/discover-subreddits` - Find subreddits
-- `POST /api/v1/campaigns/{id}/discover-posts` - Find posts
-- `POST /api/v1/campaigns/{id}/generate-responses` - Generate responses
-- `POST /api/v1/campaigns/{id}/execute-responses` - Post responses
-
-### Document Management
-- `POST /api/v1/documents/ingest` - Ingest documents (direct content)
-- `POST /api/v1/documents/ingest-url` - **Ingest from URL** (web scraping)
-- `POST /api/v1/documents/upload` - Upload file
-- `POST /api/v1/documents/query` - Query documents
-- `GET /api/v1/documents/organizations/{id}` - Get organization documents
-
-### Analytics & Reporting
-- `GET /api/v1/analytics/campaigns/{id}/engagement` - Campaign engagement report
-- `GET /api/v1/analytics/organizations/{id}/performance` - Organization performance
-- `GET /api/v1/analytics/organizations/{id}/quick-stats` - Quick stats overview
-- `GET /api/v1/analytics/platform/overview` - Platform-wide metrics
-
-### Subreddit Discovery
-- `POST /api/v1/subreddits/discover` - Discover subreddits
-- `POST /api/v1/subreddits/extract-topics` - Extract topics
-
-### Health & Monitoring
-- `GET /api/v1/health/` - Basic health check
-- `GET /api/v1/health/detailed` - Detailed health check
-- `GET /api/v1/health/ready` - Readiness check
-- `GET /api/v1/health/live` - Liveness check
 
 ## 🛠️ Installation
 
@@ -197,14 +200,9 @@ execution_request = ResponseExecutionRequest(
    GROQ_API_KEY=your_groq_key
    FIRECRAWL_API_KEY=your_firecrawl_key
    LANGCHAIN_PROJECT=your_langchain_project
+   REDDIT_CLIENT_ID=your_reddit_client_id
+   REDDIT_CLIENT_SECRET=your_reddit_client_secret
    ```
-4. Run the application:
-   ```bash
-   cd app
-   python main.py
-   ```
-
-The API will be available at `http://localhost:8000` with interactive documentation at `http://localhost:8000/docs`.
 
 ## 📓 Example Workflow
 
@@ -248,18 +246,10 @@ jupyter notebook run_example_workflow.ipynb
 
 ### URL Ingestion Example
 ```python
-# Via API
-response = requests.post(
-    "http://localhost:8000/api/v1/documents/ingest-url",
-    json={
-        "url": "https://example.com/article",
-        "title": "Article Title",
-        "organization_id": "org-1",
-        "scraping_method": "auto"
-    }
-)
+from app.core.dependencies import service_container
 
-# Via Service
+document_service = service_container.get_document_service()
+
 success, message, doc_id = await document_service.ingest_document_from_url(
     url="https://example.com/article",
     organization_id="org-1",
@@ -321,6 +311,10 @@ GROQ_API_KEY=your_groq_key
 FIRECRAWL_API_KEY=your_firecrawl_key
 LANGCHAIN_PROJECT=your_langchain_project
 
+# Reddit API
+REDDIT_CLIENT_ID=your_reddit_client_id
+REDDIT_CLIENT_SECRET=your_reddit_client_secret
+
 # Application Settings
 DATA_DIR=data
 MODEL_NAME=gpt-4o
@@ -347,58 +341,16 @@ reddit_credentials = {
 
 ## 📝 Usage Examples
 
-### URL Ingestion
+### Service Container Usage
 ```python
-# Ingest document from URL
-url_request = DocumentIngestURLRequest(
-    url="https://realpython.com/python-basics/",
-    title="Python Basics Tutorial",
-    organization_id="org-1",
-    scraping_method="auto"
-)
+from app.core.dependencies import service_container
 
-response = requests.post(
-    "http://localhost:8000/api/v1/documents/ingest-url",
-    json=url_request.model_dump()
-)
-```
-
-### Programmatic Usage
-```python
-from app.services.campaign_service import CampaignService
-from app.models.campaign import CampaignCreateRequest, ResponseTone
-
-# Initialize service
-campaign_service = CampaignService()
-
-# Create campaign
-request = CampaignCreateRequest(
-    name="My Campaign",
-    response_tone=ResponseTone.HELPFUL
-)
-
-success, message, campaign = await campaign_service.create_campaign(
-    "org-1", request
-)
-```
-
-### API Usage
-```python
-import requests
-
-# Create campaign via API
-response = requests.post(
-    "http://localhost:8000/api/v1/campaigns/?organization_id=org-1",
-    json={
-        "name": "My Campaign",
-        "response_tone": "helpful"
-    }
-)
-
-# Get campaign status
-status_response = requests.get(
-    f"http://localhost:8000/api/v1/campaigns/{campaign_id}/status"
-)
+# Get all services
+campaign_service = service_container.get_campaign_service()
+document_service = service_container.get_document_service()
+reddit_service = service_container.get_reddit_service()
+llm_service = service_container.get_llm_service()
+analytics_service = service_container.get_analytics_service()
 ```
 
 ### Document Ingestion
@@ -412,34 +364,49 @@ documents = [
     }
 ]
 
-response = requests.post(
-    "http://localhost:8000/api/v1/documents/ingest?organization_id=org-1",
-    json=documents
+success, message, document_ids = document_service.ingest_documents(
+    documents=documents,
+    org_id="org-1"
 )
 
 # URL ingestion
-url_response = requests.post(
-    "http://localhost:8000/api/v1/documents/ingest-url",
-    json={
-        "url": "https://example.com/article",
-        "title": "Article Title",
-        "organization_id": "org-1",
-        "scraping_method": "auto"
-    }
+success, message, doc_id = await document_service.ingest_document_from_url(
+    url="https://example.com/article",
+    organization_id="org-1",
+    title="Article Title",
+    scraping_method="auto"
 )
+```
+
+### Campaign Management
+```python
+from app.models.campaign import CampaignCreateRequest, ResponseTone
+
+# Create campaign
+request = CampaignCreateRequest(
+    name="My Campaign",
+    response_tone=ResponseTone.HELPFUL
+)
+
+success, message, campaign = await campaign_service.create_campaign(
+    organization_id="org-1",
+    request=request
+)
+
+# Get campaign status
+success, message, campaign = await campaign_service.get_campaign(campaign.id)
 ```
 
 ### Analytics Usage
 ```python
 # Get campaign engagement report
-engagement_report = requests.get(
-    f"http://localhost:8000/api/v1/analytics/campaigns/{campaign_id}/engagement"
-)
+engagement_report = analytics_service.get_campaign_engagement_report(campaign_id)
 
 # Get organization performance
-performance_report = requests.get(
-    f"http://localhost:8000/api/v1/analytics/organizations/{org_id}/performance"
-)
+performance_report = analytics_service.get_organization_performance_report(org_id)
+
+# Get quick stats
+quick_stats = analytics_service.get_quick_stats(org_id)
 ```
 
 ## 🧠 AI & LLM Integration
@@ -484,46 +451,32 @@ The system tracks:
 - Document ingestion statistics
 - Web scraping success rates
 
-## 📚 Documentation
-
-- **API Documentation**: Available at `/docs` when running the server
-- **OpenAPI Spec**: Available at `/openapi.json`
-- **Health Checks**: Multiple endpoints for monitoring system health
-- **Example Workflow**: Complete Jupyter notebook with step-by-step guide
-
 ## 🧪 Testing
 
-### Health Checks
-```bash
-# Basic health check
-curl http://localhost:8000/api/v1/health/
+### Service Testing
+```python
+from app.core.dependencies import service_container
 
-# Detailed health check
-curl http://localhost:8000/api/v1/health/detailed
-
-# Readiness check
-curl http://localhost:8000/api/v1/health/ready
-```
-
-### API Testing
-```bash
 # Test document ingestion
-curl -X POST "http://localhost:8000/api/v1/documents/ingest?organization_id=test-org" \
-  -H "Content-Type: application/json" \
-  -d '[{"title": "Test Doc", "content": "Test content"}]'
-
-# Test URL ingestion
-curl -X POST "http://localhost:8000/api/v1/documents/ingest-url" \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com", "organization_id": "test-org"}'
+document_service = service_container.get_document_service()
+success, message, doc_ids = document_service.ingest_documents(
+    documents=[{"title": "Test", "content": "Test content"}],
+    org_id="test-org"
+)
 
 # Test campaign creation
-curl -X POST "http://localhost:8000/api/v1/campaigns/?organization_id=test-org" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "Test Campaign", "response_tone": "helpful"}'
+campaign_service = service_container.get_campaign_service()
+from app.models.campaign import CampaignCreateRequest, ResponseTone
 
-# Test analytics
-curl "http://localhost:8000/api/v1/analytics/platform/overview"
+request = CampaignCreateRequest(
+    name="Test Campaign",
+    response_tone=ResponseTone.HELPFUL
+)
+
+success, message, campaign = await campaign_service.create_campaign(
+    organization_id="test-org",
+    request=request
+)
 ```
 
 ### Example Workflow Testing
@@ -551,13 +504,6 @@ pip install -r requirements.txt
 # Install Jupyter for running examples
 pip install jupyter
 
-# Run the application in development mode
-cd app
-python main.py
-
-# Access API documentation
-open http://localhost:8000/docs
-
 # Run example workflow
 jupyter notebook run_example_workflow.ipynb
 ```
@@ -569,14 +515,13 @@ MIT License - see LICENSE file for details
 ## 🆘 Support
 
 For issues and questions:
-1. Check the API documentation at `/docs`
-2. Review the health check endpoints
-3. Run the example workflow notebook
-4. Check application logs for detailed error information
-5. Create an issue on GitHub with detailed information
+1. Review the example workflow notebook
+2. Check application logs for detailed error information
+3. Create an issue on GitHub with detailed information
 
 ## 🔄 Version History
 
+- **v3.0.0**: Removed API layer, pure service-based architecture
 - **v2.2.0**: Added URL ingestion capabilities and complete example workflow
 - **v2.1.0**: Added comprehensive analytics and reporting system
 - **v2.0.0**: Clean architecture with modular design
